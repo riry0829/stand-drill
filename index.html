@@ -1408,7 +1408,12 @@ function rollRarity(correct){
 
 function rollChar(rarity){
   const pool = [];
-  CHARS.forEach((c, i) => { if (c[3] === rarity) pool.push([i, c[2]]); });
+  CHARS.forEach((c, i) => {
+    if (c[3] !== rarity) return;
+    let w = c[2];
+    if (save.cards[c[1] + "_" + c[0]]) w *= 0.5;  // 所持ずみキャラは重みを半分に（新キャラ優先）
+    pool.push([i, w]);
+  });
   const total = pool.reduce((sum, p) => sum + p[1], 0);
   let x = Math.random() * total;
   for (const [i, w] of pool) {
