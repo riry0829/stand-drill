@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2a1a4a">
+<title>スタンド学習ドリル</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; }
+  body {
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+    background:linear-gradient(160deg,#1a0f33 0%,#2a1a4a 50%,#3d1a5c 100%);
+    color:#fff; overflow-x:hidden;
+    min-height:100%;
+  }
+  #app { max-width:480px; margin:0 auto; min-height:100vh; position:relative; padding:16px; }
+
+  /* ゴゴゴ背景 */
+  .gogogo {
+    position:fixed; font-weight:900; color:rgba(255,215,0,.10);
+    font-size:64px; pointer-events:none; user-select:none; z-index:0;
+    animation:gogofloat 6s ease-in-out infinite;
+  }
+  @keyframes gogofloat { 0%,100%{transform:translateY(0) rotate(-8deg)} 50%{transform:translateY(-14px) rotate(-4deg)} }
+
+  .screen { display:none; position:relative; z-index:1; }
+  .screen.active { display:block; animation:fadein .25s ease; }
+  @keyframes fadein { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
+
+  h1 {
+    font-size:26px; text-align:center; margin:8px 0 2px; letter-spacing:2px;
+    background:linear-gradient(180deg,#ffe97d,#ffb300);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    text-shadow:0 3px 0 rgba(0,0,0,.35);
+    font-weight:900;
+  }
+  .subtitle { text-align:center; font-size:12px; color:#c9b8ff; margin-bottom:14px; letter-spacing:4px; }
+
+  .sound-btn {
+    position:absolute; top:2px; right:0; z-index:5;
+    width:44px; height:44px; border-radius:50%;
+    background:#2e1b57; border:2px solid #6b4fa8;
+    font-size:20px; cursor:pointer; font-family:inherit;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .sound-btn.off { opacity:.55; border-color:#4a3d6b; }
+  .sound-btn:active { transform:scale(.92); }
+
+  /* キャラカード */
+  .chara-card {
+    background:linear-gradient(160deg,#40286e,#241245);
+    border:3px solid #ffd54a; border-radius:20px;
+    padding:18px 14px 14px; text-align:center; position:relative; overflow:hidden;
+    box-shadow:0 6px 24px rgba(0,0,0,.5), inset 0 0 40px rgba(255,213,74,.08);
+  }
+  .chara-emoji { font-size:88px; line-height:1.1; filter:drop-shadow(0 6px 10px rgba(0,0,0,.5)); animation:charabob 2.4s ease-in-out infinite; display:inline-block; }
+  @keyframes charabob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px) rotate(2deg)} }
+  .chara-name { font-size:20px; font-weight:900; color:#ffe97d; margin-top:6px; letter-spacing:1px; }
+  .chara-sub { font-size:12px; color:#cbbcf5; margin-top:3px; }
+  .lv-row { display:flex; justify-content:center; align-items:center; gap:10px; margin-top:10px; }
+  .lv-badge { background:#ffd54a; color:#3a2703; font-weight:900; border-radius:999px; padding:3px 14px; font-size:15px; }
+  .streak { font-size:13px; color:#ffd0a0; font-weight:700; }
+  .expbar { height:14px; background:rgba(0,0,0,.45); border-radius:999px; margin-top:10px; overflow:hidden; border:1px solid rgba(255,213,74,.4); }
+  .expfill { height:100%; background:linear-gradient(90deg,#b57bff,#ffd54a); width:0%; transition:width .8s cubic-bezier(.2,.8,.2,1); border-radius:999px; }
+  .exptext { font-size:11px; color:#bfb0e8; margin-top:4px; }
+
+  .menacing { position:absolute; font-weight:900; color:rgba(255,213,74,.35); font-size:26px; pointer-events:none; }
+
+  /* 教科ボタン */
+  .subject-grid { display:grid; gap:12px; margin-top:18px; }
+  .subj-btn {
+    display:flex; align-items:center; gap:14px; width:100%;
+    background:linear-gradient(135deg,#4a2f80,#2c1755);
+    border:2px solid #8a63d2; border-radius:16px; padding:14px 16px;
+    color:#fff; font-size:18px; font-weight:800; cursor:pointer;
+    box-shadow:0 4px 14px rgba(0,0,0,.4);
+    transition:transform .08s ease;
+    font-family:inherit; text-align:left;
+  }
+  .subj-btn:active { transform:scale(.97); }
+  .subj-btn .icon { font-size:30px; }
+  .subj-btn .desc { font-size:11px; color:#c9b8ff; font-weight:600; display:block; margin-top:2px; }
+  .subj-btn.mix { border-color:#ffd54a; background:linear-gradient(135deg,#6e4a1e,#3d2a0e); }
+
+  .stats-row { display:flex; justify-content:space-around; margin-top:16px; font-size:12px; color:#cbbcf5; }
+  .stats-row b { color:#ffe97d; font-size:16px; display:block; text-align:center; }
+  .stats-row div { text-align:center; }
+
+  /* クイズ画面 */
+  .quiz-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .q-progress { font-weight:900; color:#ffe97d; font-size:15px; letter-spacing:1px; }
+  .combo { font-weight:900; color:#ff8ad4; font-size:15px; min-height:20px; }
+  .quit-btn { background:none; border:1px solid #7a5fb0; color:#b9a5ea; border-radius:8px; padding:4px 10px; font-size:12px; font-family:inherit; }
+
+  .q-card {
+    background:linear-gradient(160deg,#3b2569,#221142);
+    border:2px solid #8a63d2; border-radius:18px; padding:22px 16px;
+    text-align:center; min-height:120px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 20px rgba(0,0,0,.45);
+  }
+  .q-text { font-size:22px; font-weight:900; line-height:1.5; }
+  .review-tag { font-size:12px; color:#ff8ad4; font-weight:800; margin-bottom:6px; letter-spacing:1px; }
+  .q-text .big { font-size:34px; color:#ffe97d; letter-spacing:2px; }
+
+  .choices { display:grid; gap:10px; margin-top:16px; }
+  .choice-btn {
+    background:#2e1b57; border:2px solid #6b4fa8; border-radius:14px;
+    color:#fff; font-size:20px; font-weight:800; padding:14px; cursor:pointer;
+    transition:transform .07s ease; font-family:inherit;
+  }
+  .choice-btn:active { transform:scale(.97); }
+  .choice-btn.correct { background:#1d6b3a; border-color:#5aff9a; animation:pop .3s ease; }
+  .choice-btn.wrong { background:#7a1f2e; border-color:#ff5a6e; animation:shake .3s ease; }
+  .choice-btn:disabled { opacity:.92; }
+  @keyframes pop { 50%{transform:scale(1.06)} }
+  @keyframes shake { 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+  /* オラオラ演出 */
+  #fx {
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    pointer-events:none; z-index:50;
+  }
+  #fx.show { display:flex; }
+  #fx .fx-text {
+    font-size:44px; font-weight:900; letter-spacing:2px; text-align:center;
+    transform:rotate(-7deg);
+    animation:fxzoom .55s cubic-bezier(.2,1.6,.4,1);
+    text-shadow:0 4px 0 rgba(0,0,0,.55);
+  }
+  #fx .ok { color:#ffe14a; -webkit-text-stroke:2px #b8410a; }
+  #fx .ng { color:#b9a5ea; -webkit-text-stroke:1px #3a2260; font-size:34px; }
+  @keyframes fxzoom { 0%{transform:scale(.2) rotate(-7deg); opacity:0} 60%{transform:scale(1.15) rotate(-7deg); opacity:1} 100%{transform:scale(1) rotate(-7deg)} }
+
+  /* 結果画面 */
+  .result-card { text-align:center; background:linear-gradient(160deg,#40286e,#241245); border:3px solid #ffd54a; border-radius:20px; padding:24px 16px; margin-top:8px; }
+  .result-title { font-size:24px; font-weight:900; color:#ffe97d; letter-spacing:2px; }
+  .result-score { font-size:44px; font-weight:900; margin:10px 0; }
+  .result-exp { font-size:16px; color:#ff8ad4; font-weight:800; }
+  .result-quote { margin-top:12px; font-size:14px; color:#cbbcf5; font-style:italic; }
+
+  .btn-main {
+    display:block; width:100%; margin-top:16px;
+    background:linear-gradient(135deg,#ffd54a,#ff9a3d); color:#3a2200;
+    border:none; border-radius:16px; padding:16px; font-size:19px; font-weight:900;
+    cursor:pointer; box-shadow:0 5px 16px rgba(255,170,50,.35); font-family:inherit;
+    letter-spacing:1px;
+  }
+  .btn-main:active { transform:scale(.98); }
+  .btn-sub {
+    display:block; width:100%; margin-top:10px; background:none;
+    border:2px solid #8a63d2; color:#c9b8ff; border-radius:16px; padding:12px;
+    font-size:15px; font-weight:800; cursor:pointer; font-family:inherit;
+  }
+
+  /* 進化オーバーレイ */
+  #evo {
+    position:fixed; inset:0; background:rgba(10,4,26,.94); z-index:100;
+    display:none; align-items:center; justify-content:center; text-align:center;
+  }
+  #evo.show { display:flex; }
+  .evo-inner { animation:fadein .5s ease; padding:20px; }
+  .evo-dododo { font-size:22px; font-weight:900; color:#ffd54a; letter-spacing:6px; animation:gogofloat 1.2s ease-in-out infinite; }
+  .evo-emoji { font-size:110px; margin:18px 0; display:inline-block; animation:evospin 1s cubic-bezier(.2,1.5,.4,1); filter:drop-shadow(0 0 30px rgba(255,213,74,.8)); }
+  @keyframes evospin { 0%{transform:scale(0) rotate(-360deg)} 100%{transform:scale(1) rotate(0)} }
+  .evo-name { font-size:26px; font-weight:900; color:#ffe97d; }
+  .evo-sub { font-size:14px; color:#cbbcf5; margin-top:6px; }
+
+  /* ===== ガチャ ===== */
+  .btn-zukan {
+    display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+    margin-top:12px; background:linear-gradient(135deg,#1e3a5c,#12213d);
+    border:2px solid #4a90d9; border-radius:16px; padding:14px;
+    color:#bfe0ff; font-size:17px; font-weight:800; cursor:pointer; font-family:inherit;
+  }
+  .btn-zukan:active { transform:scale(.97); }
+
+  .gacha-cta {
+    display:block; width:100%; margin-top:14px;
+    background:linear-gradient(135deg,#ff5abe,#a13cff); color:#fff;
+    border:2px solid #ffd54a; border-radius:16px; padding:15px; font-size:18px; font-weight:900;
+    cursor:pointer; font-family:inherit; letter-spacing:1px;
+    box-shadow:0 5px 18px rgba(255,90,190,.4);
+    animation:gachapulse 1.4s ease-in-out infinite;
+  }
+  @keyframes gachapulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
+  .gacha-rates { font-size:11px; color:#cbbcf5; text-align:center; margin-top:8px; }
+  .gacha-locked { font-size:13px; color:#8a76c0; text-align:center; margin-top:14px; font-weight:700; }
+
+  #gacha {
+    position:fixed; inset:0; background:rgba(10,4,26,.96); z-index:120;
+    display:none; align-items:center; justify-content:center; text-align:center;
+  }
+  #gacha.show { display:flex; }
+  .gacha-card {
+    width:230px; height:320px; border-radius:18px; margin:0 auto;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:16px; position:relative;
+  }
+  .gacha-back {
+    background:linear-gradient(135deg,#3b2569,#1a0f33);
+    border:3px solid #ffd54a; cursor:pointer;
+    animation:cardshake .5s ease-in-out infinite;
+    font-size:80px; color:#ffd54a; font-weight:900;
+  }
+  @keyframes cardshake { 0%,100%{transform:rotate(-2deg)} 50%{transform:rotate(2deg)} }
+  .gacha-front { animation:cardreveal .6s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes cardreveal { 0%{transform:scale(.1) rotateY(180deg); opacity:0} 100%{transform:scale(1) rotateY(0); opacity:1} }
+
+  /* ガチャ演出：落下→着地→オーラ→フラッシュ */
+  .gacha-back.drop { animation:carddrop .85s cubic-bezier(.25,.7,.3,1) forwards; cursor:default; }
+  @keyframes carddrop {
+    0%   { transform:translateY(-95vh) rotate(560deg) scale(.5); opacity:0; }
+    55%  { opacity:1; }
+    82%  { transform:translateY(4vh) rotate(-6deg) scale(1.04); }
+    100% { transform:translateY(0) rotate(0) scale(1); }
+  }
+  .gacha-back.charge { animation:cardshake .16s ease-in-out infinite; }
+  .aura-white { box-shadow:0 0 26px rgba(255,255,255,.5); }
+  .aura-B  { box-shadow:0 0 28px rgba(190,200,220,.75); }
+  .aura-A  { box-shadow:0 0 42px rgba(181,123,255,.95), 0 0 80px rgba(181,123,255,.4); }
+  .aura-S  { box-shadow:0 0 52px rgba(255,213,74,.95), 0 0 100px rgba(255,213,74,.5); }
+  .gacha-back.aura-SS { animation:cardshake .12s ease-in-out infinite, ssaura .45s linear infinite; }
+  @keyframes ssaura {
+    0%   { box-shadow:0 0 70px #ffd54a, 0 0 140px #ff5abe, 0 0 220px rgba(255,90,190,.55); }
+    25%  { box-shadow:0 0 70px #ff5abe, 0 0 140px #5ab8ff, 0 0 220px rgba(90,184,255,.55); }
+    50%  { box-shadow:0 0 70px #5ab8ff, 0 0 140px #5aff9a, 0 0 220px rgba(90,255,154,.55); }
+    75%  { box-shadow:0 0 70px #5aff9a, 0 0 140px #ffd54a, 0 0 220px rgba(255,213,74,.55); }
+    100% { box-shadow:0 0 70px #ffd54a, 0 0 140px #ff5abe, 0 0 220px rgba(255,90,190,.55); }
+  }
+  #gacha.ss-bg { background:rgba(20,4,30,.97); }
+
+  /* SS専用：回転する虹色の集中線＋キラキラ */
+  .ss-rays {
+    position:absolute; left:50%; top:50%; width:220vmax; height:220vmax;
+    background:
+      repeating-conic-gradient(rgba(255,255,255,0) 0deg 8deg, rgba(255,255,255,.09) 8deg 16deg),
+      conic-gradient(#ff5abe, #ffd54a, #5aff9a, #5ab8ff, #b57bff, #ff5abe);
+    opacity:.55; pointer-events:none;
+    animation:ssspin 4s linear infinite;
+  }
+  @keyframes ssspin {
+    from { transform:translate(-50%,-50%) rotate(0deg); }
+    to   { transform:translate(-50%,-50%) rotate(360deg); }
+  }
+  .ss-spark {
+    position:absolute; color:#ffe97d; pointer-events:none; z-index:3;
+    text-shadow:0 0 14px #ffd54a, 0 0 30px #ff5abe;
+    animation:sparkpop 1.1s ease-in-out infinite;
+  }
+  @keyframes sparkpop {
+    0%,100% { transform:scale(.2) rotate(0deg); opacity:0; }
+    50%     { transform:scale(1.5) rotate(180deg); opacity:1; }
+  }
+  #gacha .evo-inner { position:relative; z-index:2; }
+  .evo-dododo.dodo-big { font-size:36px; color:#ff5abe; letter-spacing:10px; animation:gogofloat .5s ease-in-out infinite; }
+  .white-flash {
+    position:fixed; inset:0; background:#fff; z-index:140; pointer-events:none;
+    animation:flashfade .5s ease-out forwards;
+  }
+  @keyframes flashfade { 0%{opacity:1} 100%{opacity:0} }
+
+  .card-r-SS { background:linear-gradient(135deg,#3d1a5c,#1a0f33); border:4px solid transparent;
+    background-clip:padding-box; box-shadow:0 0 34px rgba(255,213,74,.85), 0 0 70px rgba(255,90,190,.5);
+    border-image:linear-gradient(135deg,#ffd54a,#ff5abe,#5ab8ff,#ffd54a) 1; }
+  .card-r-S  { background:linear-gradient(135deg,#4a3a10,#241c05); border:3px solid #ffd54a; box-shadow:0 0 22px rgba(255,213,74,.55); }
+  .card-r-A  { background:linear-gradient(135deg,#3a2a6e,#1c1440); border:3px solid #b57bff; box-shadow:0 0 14px rgba(181,123,255,.45); }
+  .card-r-B  { background:linear-gradient(135deg,#3a3a44,#1e1e26); border:3px solid #9aa0b0; }
+
+  .rar-badge { font-size:15px; font-weight:900; border-radius:8px; padding:2px 12px; display:inline-block; }
+  .rar-SS { background:linear-gradient(90deg,#ffd54a,#ff5abe,#5ab8ff); color:#1a0f33; }
+  .rar-S  { background:#ffd54a; color:#3a2703; }
+  .rar-A  { background:#b57bff; color:#fff; }
+  .rar-B  { background:#9aa0b0; color:#22262e; }
+
+  .char-img {
+    width:130px; height:130px; object-fit:contain; border-radius:10px;
+    margin-top:10px; filter:drop-shadow(0 4px 8px rgba(0,0,0,.5));
+  }
+  .z-img { width:56px; height:56px; object-fit:contain; border-radius:6px; }
+  .z-locked .z-img { filter:brightness(0); opacity:.9; }
+
+  .gacha-name { font-size:20px; font-weight:900; color:#fff; margin:14px 0 6px; line-height:1.4; }
+  .gacha-season { font-size:13px; color:#cbbcf5; }
+  .gacha-new { font-size:17px; font-weight:900; color:#ffe14a; margin-top:10px; animation:gachapulse 1s ease-in-out infinite; }
+  .gacha-dupe { font-size:13px; color:#8a76c0; margin-top:10px; }
+
+  /* ===== 図鑑 ===== */
+  .zukan-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .zukan-title { font-size:20px; font-weight:900; color:#ffe97d; }
+  .zukan-total { font-size:12px; color:#cbbcf5; }
+  .zukan-tabs { display:flex; gap:5px; margin:10px 0; flex-wrap:wrap; }
+  .zukan-tab {
+    flex:1; min-width:48px; background:#2e1b57; border:2px solid #6b4fa8; color:#c9b8ff;
+    border-radius:10px; padding:7px 2px; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit;
+  }
+  .zukan-tab.on { background:#ffd54a; color:#3a2703; border-color:#ffd54a; }
+  .zukan-progress { font-size:12px; color:#cbbcf5; text-align:center; margin-bottom:8px; }
+  .zukan-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .z-card {
+    border-radius:12px; padding:10px 4px 8px; text-align:center; min-height:96px;
+    display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:4px;
+  }
+  .z-card .z-name { font-size:11px; font-weight:800; line-height:1.3; word-break:break-word; }
+  .z-card .rar-badge { font-size:10px; padding:1px 8px; }
+  .z-card .z-count { font-size:9px; color:#cbbcf5; }
+  .z-locked { background:#0d0817 !important; border:2px solid #2c2144 !important; box-shadow:none !important; }
+  .z-locked .z-name { color:#4a3d6b; }
+  .z-card { cursor:pointer; transition:transform .08s ease; }
+  .z-card:active { transform:scale(.94); }
+
+  /* 図鑑の拡大表示 */
+  #zoom {
+    position:fixed; inset:0; background:rgba(10,4,26,.96); z-index:130;
+    display:none; align-items:center; justify-content:center; text-align:center;
+    padding:20px;
+  }
+  #zoom.show { display:flex; }
+  .zoom-card {
+    width:min(320px, 88vw); border-radius:20px; padding:20px 16px;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+    animation:cardreveal .35s cubic-bezier(.2,1.3,.4,1);
+  }
+  .zoom-img { width:100%; max-height:min(340px, 44vh); object-fit:contain; border-radius:12px; filter:drop-shadow(0 6px 14px rgba(0,0,0,.55)); }
+  .zoom-sil .zoom-img { filter:brightness(0); opacity:.9; }
+  .zoom-name { font-size:22px; font-weight:900; color:#fff; line-height:1.4; }
+  .zoom-sil .zoom-name { color:#4a3d6b; }
+  .zoom-meta { font-size:14px; color:#cbbcf5; }
+  .zoom-close { font-size:12px; color:#8a76c0; margin-top:14px; }
+
+  footer { text-align:center; font-size:10px; color:#6f5aa0; margin-top:22px; padding-bottom:10px; }
+  footer button { background:none; border:none; color:#6f5aa0; font-size:10px; text-decoration:underline; font-family:inherit; }
+</style>
+</head>
+<body>
+<div class="gogogo" style="top:6%; left:2%;">ゴ</div>
+<div class="gogogo" style="top:22%; right:4%; animation-delay:1s;">ゴゴ</div>
+<div class="gogogo" style="bottom:20%; left:5%; animation-delay:2s;">ゴゴゴ</div>
+<div class="gogogo" style="bottom:6%; right:2%; animation-delay:.5s;">ゴ</div>
+
+<div id="app">
+
+  <!-- ホーム -->
+  <div id="home" class="screen active">
+    <button class="sound-btn" id="soundBtn" onclick="toggleSound()">🔊</button>
+    <h1>スタンド学習ドリル</h1>
+    <div class="subtitle">— 黄金の精神で学べッ！ —</div>
+
+    <div class="chara-card">
+      <span class="menacing" style="top:8px; left:10px;">ゴ</span>
+      <span class="menacing" style="top:20px; right:12px;">ゴゴ</span>
+      <span class="menacing" style="bottom:10px; left:18px;">ゴゴ</span>
+      <div class="chara-emoji" id="charaEmoji">🥚</div>
+      <div class="chara-name" id="charaName">謎のタマゴ</div>
+      <div class="chara-sub" id="charaSub">ゴゴゴ…何かが眠っている…</div>
+      <div class="lv-row">
+        <span class="lv-badge" id="lvBadge">Lv.1</span>
+        <span class="streak" id="streakText">🔥 連続 0 日</span>
+      </div>
+      <div class="expbar"><div class="expfill" id="expFill"></div></div>
+      <div class="exptext" id="expText"></div>
+    </div>
+
+    <div class="subject-grid">
+      <button class="subj-btn" onclick="startQuiz('keisan')">
+        <span class="icon">🧮</span>
+        <span>計算ドリル<span class="desc">わり算・小数・分数・単位・時こく（3年後半〜4年）</span></span>
+      </button>
+      <button class="subj-btn" onclick="startQuiz('kanji')">
+        <span class="icon">✍️</span>
+        <span>漢字クイズ<span class="desc">3年生・4年生の漢字の読み方</span></span>
+      </button>
+      <button class="subj-btn" onclick="startQuiz('chiri')">
+        <span class="icon">🗾</span>
+        <span>都道府県クイズ<span class="desc">県庁所在地・名産・地方</span></span>
+      </button>
+      <button class="subj-btn mix" onclick="startQuiz('mix')">
+        <span class="icon">⭐</span>
+        <span>ミックスバトル<span class="desc">全教科から出題！経験値ボーナスあり</span></span>
+      </button>
+    </div>
+
+    <button class="btn-zukan" onclick="openZukan()">📖 キャラ図鑑 <span id="zukanCount"></span></button>
+
+    <div class="stats-row">
+      <div><b id="stTotal">0</b>といた数</div>
+      <div><b id="stCorrect">0</b>せいかい</div>
+      <div><b id="stRate">-</b>正答率</div>
+    </div>
+
+    <button class="btn-sub" style="margin-top:14px;" onclick="document.getElementById('packInput').click()">📦 画像パックを読み込む</button>
+    <input type="file" id="packInput" accept=".zip" style="display:none" onchange="importImagePack(this)">
+    <div id="packStatus" style="font-size:11px; color:#8a76c0; margin-top:6px; text-align:center;"></div>
+
+    <footer>
+      スタンド学習ドリル（家族用）
+      <button onclick="resetSave()">データリセット</button>
+    </footer>
+  </div>
+
+  <!-- クイズ -->
+  <div id="quiz" class="screen">
+    <div class="quiz-head">
+      <span class="q-progress" id="qProgress">第1問 / 8</span>
+      <span class="combo" id="comboText"></span>
+      <button class="quit-btn" onclick="goHome()">やめる</button>
+    </div>
+    <div class="q-card"><div class="q-text" id="qText"></div></div>
+    <div class="choices" id="choices"></div>
+  </div>
+
+  <!-- 結果 -->
+  <div id="result" class="screen">
+    <div class="result-card">
+      <div class="result-title" id="resTitle">結果発表ッ！</div>
+      <div class="result-score" id="resScore">0 / 8</div>
+      <div class="result-exp" id="resExp"></div>
+      <div class="result-quote" id="resQuote"></div>
+    </div>
+    <div id="gachaArea"></div>
+    <button class="btn-main" onclick="retry()">もう一回挑戦するッ！</button>
+    <button class="btn-sub" onclick="goHome()">ホームにもどる</button>
+  </div>
+
+  <!-- 図鑑 -->
+  <div id="zukan" class="screen">
+    <div class="zukan-head">
+      <span class="zukan-title">📖 キャラ図鑑</span>
+      <button class="quit-btn" onclick="goHome()">もどる</button>
+    </div>
+    <div class="zukan-total" id="zukanTotal"></div>
+    <div class="zukan-tabs" id="zukanTabs"></div>
+    <div class="zukan-progress" id="zukanProgress"></div>
+    <div class="zukan-grid" id="zukanGrid"></div>
+  </div>
+</div>
+
+<!-- 正解/不正解エフェクト -->
+<div id="fx"><div class="fx-text" id="fxText"></div></div>
+
+<!-- 進化演出 -->
+<div id="evo" onclick="hideEvo()">
+  <div class="evo-inner">
+    <div class="evo-dododo">ド ド ド ド ド ド</div>
+    <div class="evo-emoji" id="evoEmoji">🐣</div>
+    <div class="evo-name" id="evoName"></div>
+    <div class="evo-sub" id="evoSub"></div>
+    <div style="margin-top:20px; font-size:12px; color:#8a76c0;">タップしてとじる</div>
+  </div>
+</div>
+
+<!-- ガチャ演出 -->
+<div id="gacha">
+  <div class="evo-inner" id="gachaInner"></div>
+</div>
+
+<!-- 図鑑の拡大表示 -->
+<div id="zoom" onclick="closeZoom()">
+  <div id="zoomInner"></div>
+</div>
+
+<script>
+"use strict";
+
+/* ===== キャラ成長段階（ジョジョ風オリジナル） ===== */
+const STAGES = [
+  { lv:1,  e:"🥚", name:"謎のタマゴ",       sub:"ゴゴゴ…何かが眠っている…" },
+  { lv:3,  e:"🐣", name:"スタンドのヒナ",   sub:"波紋のエネルギーを感じる…！" },
+  { lv:6,  e:"🕺", name:"スタンド見習い",   sub:"ポーズの練習中だッ！" },
+  { lv:10, e:"🦸", name:"スタンド使い",     sub:"「オラオラ」が使えるようになった！" },
+  { lv:15, e:"👑", name:"黄金の精神",       sub:"もはや敵なし。グレートだぜ…" },
+];
+
+const OK_QUOTES = ["オラオラオラッ！","グレートだぜ！","ズキュウウン！","ナイスだ！","無駄のない答えだ！","やるじゃあないか！"];
+const NG_QUOTES = ["無駄無駄…もう一度だ","だが断る（by 問題）","次は当てられるさ…","落ちついていくぞ…"];
+const RESULT_QUOTES = [
+  [0,3,"「人間讃歌は『勇気』の讃歌ッ！」あきらめずにもう一回！"],
+  [4,5,"「その意気だ」半分こえたッ！次はもっといける！"],
+  [6,7,"「おおっと」あと少しで完璧だったッ！"],
+  [8,8,"「完璧だ…」まさに黄金の精神ッ！！"]
+];
+
+const QUESTIONS_PER_SET = 8;
+const EXP_PER_CORRECT = 10;
+const COMBO_BONUS = 5;      // 3連続正解以降、1問ごと
+const PERFECT_BONUS = 20;
+const MIX_BONUS = 10;
+
+/* ===== セーブデータ ===== */
+const SAVE_KEY = "standDrillSave_v1";
+let save = { exp:0, level:1, total:0, correct:0, streak:0, lastPlay:"", cards:{}, sound:true, missed:[] };
+
+function loadSave(){
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) save = Object.assign(save, JSON.parse(raw));
+  } catch(e){}
+  // キャラリスト改訂で存在しなくなったキー（旧形式の番号キー含む）を掃除する
+  const valid = new Set(CHARS.map(c => c[1] + "_" + c[0]));
+  for (const k of Object.keys(save.cards)) {
+    if (!valid.has(k)) delete save.cards[k];
+  }
+}
+function writeSave(){ try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch(e){} }
+function resetSave(){
+  if (confirm("本当にデータをリセットする？キャラも Lv.1 にもどるよ！")) {
+    localStorage.removeItem(SAVE_KEY);
+    location.reload();
+  }
+}
+
+function expNeed(lv){ return 60 + (lv-1)*30; }
+function stageFor(lv){
+  let s = STAGES[0];
+  for (const st of STAGES) if (lv >= st.lv) s = st;
+  return s;
+}
+
+/* ===== 連続日数 ===== */
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function updateStreak(){
+  const today = todayStr();
+  if (save.lastPlay === today) return;
+  const y = new Date(); y.setDate(y.getDate()-1);
+  const yesterday = y.getFullYear()+"-"+String(y.getMonth()+1).padStart(2,"0")+"-"+String(y.getDate()).padStart(2,"0");
+  save.streak = (save.lastPlay === yesterday) ? save.streak + 1 : 1;
+  save.lastPlay = today;
+}
+
+/* ===== 効果音（Web Audio APIで合成。音声ファイル不要） ===== */
+let audioCtx = null;
+function ac(){
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+function tone(freq, when, dur, type, vol, slideTo){
+  if (!save.sound) return;
+  try {
+    const ctx = ac();
+    const t = ctx.currentTime + when;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type || "sine";
+    o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol || 0.2, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(ctx.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  } catch(e){}
+}
+function noiseBurst(when, dur, vol, lowpass){
+  if (!save.sound) return;
+  try {
+    const ctx = ac();
+    const t = ctx.currentTime + when;
+    const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = lowpass || 800;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(vol || 0.15, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f).connect(g).connect(ctx.destination);
+    src.start(t);
+  } catch(e){}
+}
+
+/* 正解：明るいピンポン♪ */
+function toggleSound(){
+  save.sound = !save.sound;
+  writeSave();
+  updateSoundBtn();
+  if (save.sound) sfxCorrect();  // ONにした合図として1回鳴らす
+}
+function updateSoundBtn(){
+  const b = document.getElementById("soundBtn");
+  b.textContent = save.sound ? "🔊" : "🔇";
+  b.classList.toggle("off", !save.sound);
+}
+
+function sfxCorrect(){
+  tone(880, 0, .12, "square", .14);
+  tone(1320, .1, .22, "square", .14);
+}
+/* 不正解：低いブブー */
+function sfxWrong(){
+  tone(220, 0, .25, "sawtooth", .11, 110);
+  tone(165, .14, .3, "sawtooth", .09, 82);
+}
+/* ガチャ：ゴゴゴ…というドラムロール */
+function sfxGachaRoll(){
+  for (let i = 0; i < 6; i++) noiseBurst(i * .22, .18, .14, 300 + i * 80);
+  tone(55, 0, 1.4, "sawtooth", .07, 70);
+}
+/* オーラ出現時のチャージ音（上位レアほど不穏に盛り上がる） */
+function sfxCharge(r){
+  tone(120, 0, .7, "sawtooth", .09, 480);
+  if (r === "S" || r === "SS") tone(240, .3, .6, "square", .07, 960);
+  if (r === "SS") {
+    noiseBurst(.2, .9, .09, 500);
+    tone(58, 0, 1.2, "sawtooth", .11, 92);
+  }
+}
+
+/* レア度別の当たり音（上位ほど豪華に） */
+function sfxReveal(r){
+  if (r === "B") {            // ぽん
+    tone(523, 0, .16, "triangle", .18);
+  } else if (r === "A") {     // ぽんぽん↑
+    tone(523, 0, .13, "triangle", .18);
+    tone(784, .11, .25, "triangle", .18);
+  } else if (r === "S") {     // 駆け上がるアルペジオ＋キラン
+    [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .09, .18, "triangle", .18));
+    tone(2093, .42, .4, "sine", .11);
+  } else {                    // SS：大ファンファーレ＋シャラーン
+    [523, 659, 784].forEach((f, i) => tone(f, i * .12, .16, "square", .13));
+    [1047, 1319, 1568].forEach((f, i) => tone(f, .42 + i * .12, .2, "square", .13));
+    [523, 659, 784, 1047, 1568].forEach(f => tone(f, .88, .8, "triangle", .11));
+    tone(2093, .92, .55, "sine", .09);
+    tone(3136, 1.02, .55, "sine", .06);
+    noiseBurst(.88, .5, .05, 7000);
+  }
+}
+
+/* ===== 漢字（小4）読みクイズ ===== */
+const KANJI = [
+  ["熱心","ねっしん",["ねつごころ","あつしん","ねしん"]],
+  ["協力","きょうりょく",["きょりょく","こうりょく","きょうりき"]],
+  ["健康","けんこう",["けんこ","げんこう","けんごう"]],
+  ["観察","かんさつ",["かんさい","けんさつ","かんざつ"]],
+  ["完成","かんせい",["かんじょう","がんせい","かんせん"]],
+  ["希望","きぼう",["きもう","けぼう","きぼん"]],
+  ["失敗","しっぱい",["しつばい","しっけい","しはい"]],
+  ["成功","せいこう",["せいくう","じょうこう","せこう"]],
+  ["卒業","そつぎょう",["そつごう","そっきょう","そつぎょ"]],
+  ["選挙","せんきょ",["せんきょう","せんこ","えらんきょ"]],
+  ["材料","ざいりょう",["さいりょう","ざいりょ","まいりょう"]],
+  ["給食","きゅうしょく",["きゅしょく","きゅうそく","くうしょく"]],
+  ["泣く","なく",["わく","さく","かく"]],
+  ["笑う","わらう",["うたう","ならう","さそう"]],
+  ["焼く","やく",["さく","まく","たく"]],
+  ["浴びる","あびる",["おびる","のびる","さびる"]],
+  ["冷たい","つめたい",["ひえたい","さむたい","つべたい"]],
+  ["静か","しずか",["せいか","しすか","きよか"]],
+  ["続く","つづく",["ぞくく","つずく","きずく"]],
+  ["結ぶ","むすぶ",["ゆわぶ","けつぶ","むずぶ"]],
+  ["折る","おる",["せつる","きる","そる"]],
+  ["借りる","かりる",["しゃりる","たりる","さりる"]],
+  ["覚える","おぼえる",["かんがえる","かくえる","さかえる"]],
+  ["努力","どりょく",["どうりょく","ぬりょく","どりき"]],
+  ["勇気","ゆうき",["ようき","ゆき","いさき"]],
+  ["必要","ひつよう",["ひっよう","しつよう","ひつじょう"]],
+  ["節約","せつやく",["せちやく","ふしやく","せつよう"]],
+  ["変化","へんか",["へんげ","かんか","へんかつ"]],
+  ["便利","べんり",["びんり","べんとし","へんり"]],
+  ["満足","まんぞく",["まんそく","みちぞく","ばんぞく"]],
+  ["願う","ねがう",["がんう","のぞう","いのう"]],
+  ["戦う","たたかう",["せんう","あらそう","むかう"]],
+  ["治る","なおる",["じる","おさる","ちる"]],
+  ["祝う","いわう",["しゅくう","うらなう","ねがう"]],
+  ["特別","とくべつ",["とくへつ","どくべつ","ときべつ"]],
+  ["自然","しぜん",["じぜん","しねん","じねん"]],
+  ["勉強","べんきょう",["べんきょ","めんきょう","べんぎょう"]],
+  ["練習","れんしゅう",["れんしゅ","ねんしゅう","れいしゅう"]],
+  ["旅行","りょこう",["りょうこう","たびこう","りょこ"]],
+  ["医者","いしゃ",["いしや","いじゃ","いっしゃ"]],
+  ["病院","びょういん",["びょいん","びよういん","びょうい"]],
+  ["温度","おんど",["おんどう","うんど","おんと"]],
+  ["相談","そうだん",["そうたん","あいだん","しょうだん"]],
+  ["研究","けんきゅう",["けんきゅ","げんきゅう","けんこう"]],
+  ["幸せ","しあわせ",["こうせ","さいわせ","しわせ"]],
+  ["祭り","まつり",["さいり","まいり","かざり"]],
+  ["深い","ふかい",["しんい","ふけい","ぶかい"]],
+  ["速い","はやい",["そくい","すばい","はやし"]],
+  ["短い","みじかい",["たんい","みちかい","ちぢかい"]],
+  ["軽い","かるい",["けいい","かろい","がるい"]],
+  ["美しい","うつくしい",["びしい","うるくしい","うつくし"]],
+  ["悲しい","かなしい",["ひしい","かんなしい","がなしい"]],
+  ["暗い","くらい",["あんい","ぐらい","くろい"]],
+  ["寒い","さむい",["かんい","さぶい","さむし"]],
+  ["暑い","あつい",["しょい","あづい","あついい"]],
+  ["集める","あつめる",["しゅうめる","つどめる","あづめる"]],
+  ["育てる","そだてる",["いくてる","そたてる","はぐてる"]],
+  ["泳ぐ","およぐ",["えいぐ","うよぐ","およご"]],
+  ["運ぶ","はこぶ",["うんぶ","はごぶ","はこふ"]],
+  ["調べる","しらべる",["ちょうべる","ととのべる","しなべる"]],
+  ["拾う","ひろう",["しゅうう","ひろい","じゅう"]],
+  ["投げる","なげる",["とうげる","たげる","なける"]],
+  ["登る","のぼる",["とうる","とぼる","のほる"]],
+  ["流れる","ながれる",["りゅうれる","なかれる","ながれつ"]],
+  ["落ちる","おちる",["らくちる","おぢる","おじる"]],
+  ["曲がる","まがる",["きょくがる","まかる","くまがる"]],
+  ["消える","きえる",["しょうえる","けえる","きいえる"]],
+  ["始まる","はじまる",["しまる","はしまる","はじばる"]],
+  ["終わる","おわる",["しゅうわる","おはる","をわる"]],
+  ["待つ","まつ",["じつ","たいつ","まづ"]],
+  ["植える","うえる",["しょくえる","うわえる","ううえる"]],
+  ["世界","せかい",["せいかい","よかい","せがい"]],
+  ["家族","かぞく",["かそく","いえぞく","やぞく"]],
+  ["有名","ゆうめい",["ゆめい","ありな","ゆうな"]],
+  ["自由","じゆう",["じゆ","しゆう","じいゆう"]],
+  ["平和","へいわ",["ひらわ","へわ","べいわ"]],
+  ["安全","あんぜん",["あんせん","やすぜん","あんぜ"]],
+  ["出発","しゅっぱつ",["しゅつはつ","でぱつ","しゅっぱち"]],
+  ["問題","もんだい",["もんたい","とんだい","もだい"]],
+  ["薬","くすり",["やくり","ぐすり","くすい"]],
+  ["氷","こおり",["こうり","おおり","こおろ"]],
+  ["湖","みずうみ",["みずうな","うみみず","こみず"]],
+  ["緑","みどり",["りょくり","みとり","もどり"]],
+];
+
+/* ===== 都道府県クイズ ===== */
+const CHIRI = [
+  ["香川県の県庁所在地は？","高松市",["丸亀市","松山市","高知市"]],
+  ["愛媛県の県庁所在地は？","松山市",["今治市","高松市","宇和島市"]],
+  ["北海道の道庁所在地は？","札幌市",["函館市","旭川市","小樽市"]],
+  ["宮城県の県庁所在地は？","仙台市",["盛岡市","山形市","石巻市"]],
+  ["愛知県の県庁所在地は？","名古屋市",["豊田市","岡崎市","愛知市"]],
+  ["兵庫県の県庁所在地は？","神戸市",["姫路市","兵庫市","西宮市"]],
+  ["沖縄県の県庁所在地は？","那覇市",["沖縄市","石垣市","名護市"]],
+  ["石川県の県庁所在地は？","金沢市",["石川市","富山市","福井市"]],
+  ["神奈川県の県庁所在地は？","横浜市",["川崎市","鎌倉市","神奈川市"]],
+  ["群馬県の県庁所在地は？","前橋市",["高崎市","群馬市","宇都宮市"]],
+  ["栃木県の県庁所在地は？","宇都宮市",["栃木市","前橋市","日光市"]],
+  ["茨城県の県庁所在地は？","水戸市",["茨城市","つくば市","日立市"]],
+  ["滋賀県の県庁所在地は？","大津市",["滋賀市","彦根市","草津市"]],
+  ["島根県の県庁所在地は？","松江市",["出雲市","島根市","鳥取市"]],
+  ["山梨県の県庁所在地は？","甲府市",["山梨市","富士吉田市","松本市"]],
+  ["岩手県の県庁所在地は？","盛岡市",["岩手市","仙台市","花巻市"]],
+  ["三重県の県庁所在地は？","津市",["四日市市","三重市","伊勢市"]],
+  ["四国にある県はどれ？","徳島県",["岡山県","広島県","和歌山県"]],
+  ["四国に「ない」県はどれ？","山口県",["香川県","愛媛県","高知県"]],
+  ["九州地方にある県はどれ？","熊本県",["島根県","愛媛県","三重県"]],
+  ["東北地方にある県はどれ？","秋田県",["新潟県","茨城県","長野県"]],
+  ["うどんで有名な県は？","香川県",["高知県","岡山県","佐賀県"]],
+  ["りんごの生産量が日本一の県は？","青森県",["秋田県","長野県","岩手県"]],
+  ["みかんの生産で有名な四国の県は？","愛媛県",["徳島県","香川県","高知県"]],
+  ["さくらんぼで有名な県は？","山形県",["福島県","青森県","新潟県"]],
+  ["落花生（ピーナッツ）で有名な県は？","千葉県",["埼玉県","茨城県","静岡県"]],
+  ["かつおの一本づりで有名な四国の県は？","高知県",["愛媛県","香川県","徳島県"]],
+  ["すだちの生産量日本一の県は？","徳島県",["香川県","高知県","大分県"]],
+  ["琵琶湖がある県は？","滋賀県",["京都府","三重県","奈良県"]],
+  ["富士山がまたがる県は静岡県とどこ？","山梨県",["長野県","神奈川県","埼玉県"]],
+  ["日本でいちばん面積が大きい都道府県は？","北海道",["岩手県","長野県","新潟県"]],
+  ["日本でいちばん面積が小さい都道府県は？","香川県",["大阪府","東京都","沖縄県"]],
+  ["日本の首都がある都道府県は？","東京都",["大阪府","京都府","神奈川県"]],
+  ["「海がない県」はどれ？","奈良県",["兵庫県","三重県","和歌山県"]],
+  ["埼玉県の県庁所在地は？","さいたま市",["埼玉市","浦和市","川越市"]],
+  ["金閣寺がある都道府県は？","京都府",["奈良県","大阪府","東京都"]],
+  ["大阪城がある都道府県は？","大阪府",["兵庫県","京都府","愛知県"]],
+  ["名古屋城がある都道府県は？","愛知県",["岐阜県","静岡県","三重県"]],
+  ["姫路城がある都道府県は？","兵庫県",["大阪府","岡山県","京都府"]],
+  ["東京スカイツリーがある都道府県は？","東京都",["千葉県","神奈川県","埼玉県"]],
+  ["桜島がある都道府県は？","鹿児島県",["熊本県","宮崎県","沖縄県"]],
+  ["阿蘇山がある都道府県は？","熊本県",["大分県","鹿児島県","長崎県"]],
+  ["出雲大社がある都道府県は？","島根県",["鳥取県","広島県","山口県"]],
+  ["厳島神社（宮島）がある都道府県は？","広島県",["山口県","島根県","岡山県"]],
+  ["ぶどうや ももの生産で有名な県は？","山梨県",["群馬県","埼玉県","栃木県"]],
+  ["お茶の生産で有名な県は？","静岡県",["愛知県","新潟県","広島県"]],
+  ["納豆で有名な県は？","茨城県",["栃木県","群馬県","千葉県"]],
+  ["じゃがいもや牛乳の生産が日本一の都道府県は？","北海道",["青森県","岩手県","長野県"]],
+  ["米づくりがさかんで「コシヒカリ」で有名な県は？","新潟県",["群馬県","山梨県","埼玉県"]],
+  ["いちご「とちおとめ」で有名な県は？","栃木県",["福岡県","群馬県","茨城県"]],
+  ["たこ焼き発祥の地として有名な府は？","大阪府",["京都府","奈良県","滋賀県"]],
+  ["中部地方にある県はどれ？","長野県",["群馬県","滋賀県","奈良県"]],
+  ["関東地方にある県はどれ？","栃木県",["福島県","新潟県","山梨県"]],
+  ["近畿地方にある県はどれ？","奈良県",["岡山県","愛知県","香川県"]],
+  ["中国地方にある県はどれ？","岡山県",["福岡県","愛媛県","兵庫県"]],
+  ["東京都がある地方は？","関東地方",["中部地方","東北地方","近畿地方"]],
+  ["愛知県がある地方は？","中部地方",["関東地方","近畿地方","中国地方"]],
+  ["福岡県がある地方は？","九州地方",["中国地方","四国地方","近畿地方"]],
+  ["日本で2番目に面積が大きい都道府県は？","岩手県",["長野県","新潟県","福島県"]],
+];
+
+/* ===== 計算問題ジェネレーター（小4レベル） ===== */
+function rnd(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+function numWrongs(a, offsets){
+  const s = new Set();
+  let guard = 0;
+  while (s.size < 3 && guard++ < 300) {
+    const w = a + pick(offsets);
+    if (w !== a && w > 0) s.add(w);
+  }
+  return [...s].map(String);
+}
+
+/* 角度・大きな数の豆問題（3年後半〜4年1学期） */
+const MAME_BANK = [
+  ["直角の角度は 何度？","90度",["45度","180度","100度"]],
+  ["半回転の角度は 何度？","180度",["90度","270度","360度"]],
+  ["1回転の角度は 何度？","360度",["180度","270度","300度"]],
+  ["三角じょうぎの いちばん小さい角は 30度。あと2つは 90度と何度？","60度",["45度","30度","75度"]],
+  ["1000を 10こ集めた数は？","1万",["1000","10万","100万"]],
+  ["1億は 1万の 何倍？","1万倍",["100倍","1000倍","10万倍"]],
+  ["100万を 10こ集めた数は？","1000万",["100万","1億","10万"]],
+  ["一万を 38こ集めた数は？","38万",["3万8000","380万","38億"]],
+];
+
+/* 計算問題ジェネレーター（3年後半〜4年1学期） */
+function genMath(){
+  const type = rnd(1, 13);
+  const offsets = [1,-1,10,-10,2,-2,20,-20,100,-100];
+  let q, a;
+
+  if (type === 1) {            // 3桁 + 3桁
+    const x = rnd(120,899), y = rnd(120,899);
+    q = `${x} + ${y}`; a = x + y;
+  } else if (type === 2) {     // 3桁 - 3桁
+    const x = rnd(300,999), y = rnd(100,299);
+    q = `${x} − ${y}`; a = x - y;
+  } else if (type === 3) {     // 2桁 × 1桁
+    const x = rnd(12,99), y = rnd(3,9);
+    q = `${x} × ${y}`; a = x * y;
+  } else if (type === 4) {     // 2桁 × 2桁
+    const x = rnd(12,49), y = rnd(11,29);
+    q = `${x} × ${y}`; a = x * y;
+  } else if (type === 5) {     // 3桁 × 1桁（3年後半の筆算）
+    const x = rnd(123,987), y = rnd(2,9);
+    q = `${x} × ${y}`; a = x * y;
+  } else if (type === 6) {     // わり算（わり切れる）
+    const y = rnd(3,9), ans = rnd(12,99);
+    q = `${y*ans} ÷ ${y}`; a = ans;
+  } else if (type === 7) {     // 計算のじゅんじょ
+    const x = rnd(2,9), y = rnd(2,9), z = rnd(10,60);
+    q = `${z} + ${x} × ${y}`; a = z + x * y;
+  } else if (type === 8) {     // あまりのあるわり算（3年）
+    const y = rnd(3,9), qt = rnd(3,12), r = rnd(1, y-1);
+    const ans = `${qt} あまり ${r}`;
+    const w = [
+      `${qt+1} あまり ${r}`,
+      `${qt} あまり ${r === 1 ? 2 : r-1}`,
+      `${qt-1 >= 1 ? qt-1 : qt+2} あまり ${r}`,
+    ];
+    return { q:`<span class="big">${y*qt+r} ÷ ${y} = ?</span>`, a:ans, w };
+  } else if (type === 9) {     // 小数のたし算・ひき算（3年後半）
+    let xt = rnd(12,88), yt = rnd(11,87);
+    const isAdd = Math.random() < .5;
+    if (!isAdd && xt <= yt) [xt, yt] = [yt + rnd(1,9), yt];
+    const at = isAdd ? xt + yt : xt - yt;
+    const fmt = t => (t/10).toFixed(1);
+    const wt = new Set();
+    while (wt.size < 3) {
+      const c = at + pick([1,-1,10,-10,2,-2]);
+      if (c !== at && c > 0) wt.add(c);
+    }
+    return { q:`<span class="big">${fmt(xt)} ${isAdd?'+':'−'} ${fmt(yt)} = ?</span>`, a:fmt(at), w:[...wt].map(fmt) };
+  } else if (type === 10) {    // 分数（同じ分母）（3年後半）
+    const d = rnd(5,9);
+    let n1, n2, n, sym;
+    if (Math.random() < .5) { n1 = rnd(1,d-2); n2 = rnd(1,d-1-n1); n = n1+n2; sym = "+"; }
+    else { n1 = rnd(2,d-1); n2 = rnd(1,n1-1); n = n1-n2; sym = "−"; }
+    const w = [`${n+1}/${d}`, n-1 >= 1 ? `${n-1}/${d}` : `${n+2}/${d}`, `${n}/${d+1}`];
+    return { q:`<span class="big">${n1}/${d} ${sym} ${n2}/${d} = ?</span>`, a:`${n}/${d}`, w };
+  } else if (type === 11) {    // 単位の換算（3年）
+    const U = [["km","m",1000],["m","cm",100],["cm","mm",10],["kg","g",1000],["L","dL",10],["dL","mL",100]];
+    const [big, small, f] = pick(U);
+    const v = rnd(2,9);
+    const w = [`${v*f/10}${small}`, `${v*f*10}${small}`, `${(v+1)*f}${small}`];
+    return { q:`${v}${big} は 何${small}？`, a:`${v*f}${small}`, w };
+  } else if (type === 12) {    // 時こくと時間（3年）
+    const h = rnd(1,10), m = pick([0,10,20,30,40,50]), add = pick([20,25,30,35,40,45,50]);
+    const tot = m + add, nh = h + Math.floor(tot/60), nm = tot % 60;
+    const ans = `${nh}時${nm}分`;
+    const cand = [`${nh}時${nm === 50 ? nm-10 : nm+10}分`, `${nh+1}時${nm}分`, `${h}時${(m + add + 10) % 60}分`, `${nh+2}時${nm}分`];
+    const w = [...new Set(cand.filter(c => c !== ans))].slice(0,3);
+    return { q:`${h}時${m}分から ${add}分後の時こくは？`, a:ans, w };
+  } else {                     // 角度・大きな数の豆問題
+    const item = pick(MAME_BANK);
+    return { q:item[0], a:item[1], w:[...item[2]] };
+  }
+  return { q:`<span class="big">${q} = ?</span>`, a:String(a), w:numWrongs(a, offsets) };
+}
+
+function fromBank(bank, kanjiMode){
+  const item = pick(bank);
+  if (kanjiMode) {
+    return { q:`<span class="big">「${item[0]}」</span><br>の読み方はどれ？`, a:item[1], w:item[2] };
+  }
+  return { q:item[0], a:item[1], w:item[2] };
+}
+
+/* ===== クイズ進行 ===== */
+let quizState = null;
+
+/* 間違えた問題の記録（正解できたら消える） */
+const MISS_MAX = 40;
+function addMiss(item){
+  if (!Array.isArray(save.missed)) save.missed = [];
+  if (!save.missed.some(m => m.q === item.q)) {
+    save.missed.push({ q:item.q, a:item.a, w:item.w, s:item.s });
+    if (save.missed.length > MISS_MAX) save.missed.shift();
+  }
+  writeSave();
+}
+function removeMiss(item){
+  if (!Array.isArray(save.missed)) return;
+  const i = save.missed.findIndex(m => m.q === item.q);
+  if (i >= 0) { save.missed.splice(i, 1); writeSave(); }
+}
+
+function buildSet(subject){
+  const qs = [];
+  const used = new Set();
+  for (let i=0; i<QUESTIONS_PER_SET; i++) {
+    let subj = subject;
+    if (subject === "mix") subj = pick(["keisan","kanji","chiri"]);
+    let item, key, guard = 0;
+    do {
+      if (subj === "keisan") item = genMath();
+      else if (subj === "kanji") item = fromBank(KANJI, true);
+      else item = fromBank(CHIRI, false);
+      key = item.q;
+      guard++;
+    } while (used.has(key) && guard < 30);
+    used.add(key);
+    item.s = subj;
+    qs.push(item);
+  }
+  // 前に間違えた問題を「復習もんだい」としてまぜる（少しだけ出やすくする）
+  // 1セットあたり 0〜2問・平均1問ほど
+  const pool = (save.missed || []).filter(m => (subject === "mix" || m.s === subject) && !used.has(m.q));
+  const shuffled = [...pool].sort(() => Math.random() - .5);
+  const target = Math.min(shuffled.length, (Math.random() < .7 ? 1 : 0) + (Math.random() < .35 ? 1 : 0));
+  const usedPos = new Set();
+  for (let k = 0; k < target; k++) {
+    const m = shuffled[k];
+    let pos, guard = 0;
+    do { pos = rnd(0, QUESTIONS_PER_SET - 1); guard++; } while (usedPos.has(pos) && guard < 20);
+    if (usedPos.has(pos)) continue;
+    usedPos.add(pos);
+    qs[pos] = { q:m.q, a:m.a, w:[...m.w], s:m.s, review:true };
+    used.add(m.q);
+  }
+  return qs;
+}
+
+function startQuiz(subject){
+  quizState = {
+    subject,
+    questions: buildSet(subject),
+    index: 0,
+    correct: 0,
+    combo: 0,
+    maxCombo: 0,
+    bonusExp: 0,
+    answering: false,
+  };
+  showScreen("quiz");
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const s = quizState;
+  const item = s.questions[s.index];
+  document.getElementById("qProgress").textContent = `第${s.index+1}問 / ${QUESTIONS_PER_SET}`;
+  document.getElementById("comboText").textContent = s.combo >= 2 ? `🔥${s.combo}コンボ!` : "";
+  document.getElementById("qText").innerHTML =
+    (item.review ? '<div class="review-tag">🔁 復習もんだい</div>' : '') + item.q;
+
+  const choices = [item.a, ...item.w].sort(() => Math.random() - .5);
+  const box = document.getElementById("choices");
+  box.innerHTML = "";
+  for (const c of choices) {
+    const b = document.createElement("button");
+    b.className = "choice-btn";
+    b.textContent = c;
+    b.onclick = () => answer(b, c === item.a, item.a);
+    box.appendChild(b);
+  }
+  s.answering = true;
+}
+
+function answer(btn, isCorrect, correctAnswer){
+  const s = quizState;
+  if (!s.answering) return;
+  s.answering = false;
+
+  const buttons = document.querySelectorAll(".choice-btn");
+  buttons.forEach(b => {
+    b.disabled = true;
+    if (b.textContent === correctAnswer) b.classList.add("correct");
+  });
+
+  const item = s.questions[s.index];
+  if (isCorrect) {
+    s.correct++;
+    s.combo++;
+    s.maxCombo = Math.max(s.maxCombo, s.combo);
+    if (s.combo >= 3) s.bonusExp += COMBO_BONUS;
+    removeMiss(item);
+    sfxCorrect();
+    showFx(pick(OK_QUOTES), true);
+  } else {
+    btn.classList.add("wrong");
+    s.combo = 0;
+    addMiss(item);
+    sfxWrong();
+    showFx(pick(NG_QUOTES), false);
+  }
+
+  setTimeout(() => {
+    s.index++;
+    if (s.index < QUESTIONS_PER_SET) renderQuestion();
+    else finishQuiz();
+  }, 1100);
+}
+
+function showFx(text, ok){
+  const fx = document.getElementById("fx");
+  const t = document.getElementById("fxText");
+  t.textContent = text;
+  t.className = "fx-text " + (ok ? "ok" : "ng");
+  fx.classList.add("show");
+  setTimeout(() => fx.classList.remove("show"), 900);
+}
+
+/* ===== 結果とレベルアップ ===== */
+function finishQuiz(){
+  const s = quizState;
+  let exp = s.correct * EXP_PER_CORRECT + s.bonusExp;
+  if (s.correct === QUESTIONS_PER_SET) exp += PERFECT_BONUS;
+  if (s.subject === "mix") exp += MIX_BONUS;
+
+  const beforeStage = stageFor(save.level);
+
+  save.total += QUESTIONS_PER_SET;
+  save.correct += s.correct;
+  save.exp += exp;
+  updateStreak();
+  let leveled = false;
+  while (save.exp >= expNeed(save.level)) {
+    save.exp -= expNeed(save.level);
+    save.level++;
+    leveled = true;
+  }
+  writeSave();
+
+  document.getElementById("resScore").textContent = `${s.correct} / ${QUESTIONS_PER_SET}`;
+  document.getElementById("resTitle").textContent =
+    s.correct === QUESTIONS_PER_SET ? "パーフェクトッ！！" : "結果発表ッ！";
+  let expLine = `経験値 +${exp} EXP`;
+  if (leveled) expLine += `　⤴ Lv.${save.level} にアップ！`;
+  document.getElementById("resExp").textContent = expLine;
+  for (const [lo, hi, quote] of RESULT_QUOTES) {
+    if (s.correct >= lo && s.correct <= hi) {
+      document.getElementById("resQuote").textContent = quote;
+      break;
+    }
+  }
+  renderGachaArea();
+  showScreen("result");
+
+  const afterStage = stageFor(save.level);
+  if (afterStage !== beforeStage) {
+    setTimeout(() => showEvo(afterStage), 600);
+  }
+}
+
+function showEvo(stage){
+  document.getElementById("evoEmoji").textContent = stage.e;
+  document.getElementById("evoName").textContent = stage.name + " に進化ッ！！";
+  document.getElementById("evoSub").textContent = stage.sub;
+  document.getElementById("evo").classList.add("show");
+}
+function hideEvo(){ document.getElementById("evo").classList.remove("show"); }
+
+function retry(){ startQuiz(quizState.subject); }
+
+/* ===== カードガチャ ===== */
+/* キャラデータ：[名前, 部, 出現重み(高3/中2/低1), レア度]（ジョジョ_キャラクター一覧.xlsx より） */
+const CHARS = [
+["ジョナサン・ジョースター", 1, 3, "SS"],
+["ディオ・ブランドー", 1, 3, "SS"],
+["ロバート・E・O・スピードワゴン", 1, 2, "SS"],
+["ウィル・A・ツェペリ", 1, 2, "SS"],
+["エリナ・ペンドルトン", 1, 1, "A"],
+["ジョージ・ジョースター1世", 1, 1, "B"],
+["ダイアー", 1, 1, "B"],
+["ストレイツォ", 1, 1, "A"],
+["ワンチェン", 1, 1, "B"],
+["ジャック・ザ・リッパー", 1, 1, "B"],
+["タルカス", 1, 1, "B"],
+["ブラフォード", 1, 1, "A"],
+["ポコ", 1, 1, "B"],
+["ジョセフ・ジョースター", 2, 3, "SS"],
+["シーザー・A・ツェペリ", 2, 2, "SS"],
+["リサリサ(エリザベス)", 2, 2, "S"],
+["カーズ", 2, 2, "SS"],
+["ワムウ", 2, 2, "S"],
+["エシディシ", 2, 2, "S"],
+["サンタナ", 2, 1, "S"],
+["スージーQ", 2, 1, "A"],
+["ロギンズ", 2, 1, "A"],
+["メッシーナ", 2, 1, "B"],
+["スモーキー", 2, 1, "B"],
+["ルドル・フォン・シュトロハイム", 2, 1, "S"],
+["空条承太郎", 3, 3, "SS"],
+["ジョセフ・ジョースター", 3, 2, "SS"],
+["モハメド・アヴドゥル", 3, 2, "SS"],
+["花京院典明", 3, 2, "SS"],
+["ジャン・ピエール・ポルナレフ", 3, 2, "SS"],
+["イギー", 3, 2, "SS"],
+["DIO", 3, 3, "SS"],
+["空条ホリィ", 3, 1, "B"],
+["ヴァニラ・アイス", 3, 2, "SS"],
+["ンドゥール", 3, 1, "A"],
+["ホル・ホース", 3, 2, "S"],
+["ダニエル・J・ダービー", 3, 1, "S"],
+["テレンス・T・ダービー", 3, 1, "S"],
+["マライア", 3, 1, "B"],
+["ペット・ショップ", 3, 1, "S"],
+["グレーフライ", 3, 1, "B"],
+["J・ガイル", 3, 1, "B"],
+["エンヤ婆", 3, 1, "A"],
+["ズィー・ズィー", 3, 1, "B"],
+["ラバーソール", 3, 1, "B"],
+["アレッシー", 3, 1, "B"],
+["オインゴ", 3, 1, "A"],
+["ボインゴ", 3, 1, "A"],
+["ケニーG", 3, 1, "B"],
+["スティーリー・ダン", 3, 1, "B"],
+["東方仗助", 4, 3, "SS"],
+["広瀬康一", 4, 2, "SS"],
+["虹村億泰", 4, 2, "SS"],
+["岸辺露伴", 4, 3, "SS"],
+["空条承太郎", 4, 2, "SS"],
+["山岸由花子", 4, 2, "S"],
+["吉良吉影", 4, 3, "SS"],
+["トニオ・トラサルディー", 4, 1, "A"],
+["音石明", 4, 1, "S"],
+["虹村形兆", 4, 1, "S"],
+["矢安宮重清(重ちー)", 4, 1, "A"],
+["辻彩", 4, 1, "A"],
+["宮本輝之輔", 4, 1, "B"],
+["川尻早人", 4, 1, "B"],
+["小林玉美", 4, 1, "B"],
+["間田敏和", 4, 1, "B"],
+["片桐安十郎(アンジェロ)", 4, 1, "B"],
+["噴上裕也", 4, 1, "S"],
+["チープ・トリック", 4, 1, "B"],
+["エニグマの少年", 4, 1, "B"],
+["大柳賢(パール・ジャム)", 4, 1, "B"],
+["ジョルノ・ジョバァーナ", 5, 3, "SS"],
+["ブローノ・ブチャラティ", 5, 3, "SS"],
+["グイード・ミスタ", 5, 2, "SS"],
+["ナランチャ・ギルガ", 5, 2, "SS"],
+["パンナコッタ・フーゴ", 5, 2, "SS"],
+["レオーネ・アバッキオ", 5, 2, "S"],
+["トリッシュ・ウナ", 5, 2, "SS"],
+["ディアボロ", 5, 3, "SS"],
+["ドッピオ", 5, 2, "S"],
+["ポルポ", 5, 1, "A"],
+["ペッシ", 5, 1, "A"],
+["プロシュート", 5, 1, "S"],
+["メローネ", 5, 1, "S"],
+["ギアッチョ", 5, 2, "S"],
+["リゾット・ネエロ", 5, 1, "S"],
+["ホルマジオ", 5, 1, "B"],
+["イルーゾォ", 5, 1, "B"],
+["ソルベ", 5, 1, "B"],
+["ジェラート", 5, 1, "B"],
+["チョコラータ", 5, 1, "B"],
+["セッコ", 5, 1, "B"],
+["ペリーコロ", 5, 1, "B"],
+["スクアーロ", 5, 1, "S"],
+["ティッツァーノ", 5, 1, "B"],
+["ズッケェロ", 5, 1, "B"],
+["マリオ・ズッケェロ", 5, 1, "B"],
+["カルネ", 5, 1, "B"],
+["空条徐倫", 6, 3, "SS"],
+["エルメェス・コステロ", 6, 2, "S"],
+["フー・ファイターズ(F・F)", 6, 2, "SS"],
+["ウェザー・リポート", 6, 2, "SS"],
+["ナルシソ・アナスイ", 6, 2, "SS"],
+["エンリコ・プッチ", 6, 3, "SS"],
+["空条承太郎", 6, 2, "S"],
+["エンポリオ・アルニーニョ", 6, 1, "A"],
+["グェス", 6, 1, "A"],
+["ジョンガリ・A", 6, 1, "A"],
+["ミューミュー", 6, 1, "A"],
+["ケンゾー", 6, 1, "A"],
+["スポーツ・マックス", 6, 1, "B"],
+["ミラション", 6, 1, "B"],
+["ラング・ラングラー", 6, 1, "B"],
+["D・アン・G", 6, 1, "B"]
+];
+
+/* 正解数ごとの排出率（%） */
+const GACHA_RATES = {
+  5: { SS:5,   S:10,   A:30, B:55 },
+  6: { SS:6.5, S:11.5, A:30, B:52 },
+  7: { SS:8,   S:13,   A:30, B:49 },
+  8: { SS:10,  S:15,   A:30, B:45 },
+};
+const GACHA_MIN_CORRECT = 5;
+
+/* ===== キャラ画像 =====
+   images/ フォルダに「部番号_キャラ名.png」（.jpg / .webp も可）を置くと表示される。
+   例: images/3_空条承太郎.png　※無ければ画像なしで動く */
+function cardKey(idx){ return CHARS[idx][1] + "_" + CHARS[idx][0]; }
+
+function imgTag(idx, cls){
+  const name = CHARS[idx][0], part = CHARS[idx][1];
+  const key = `${part}_${name}`;
+  if (imgCache[key]) return `<img class="${cls}" src="${imgCache[key]}" alt="">`;
+  const base = encodeURI(`images/${key}`);
+  return `<img class="${cls}" src="${base}.png" data-alt="${base}.jpg|${base}.webp" onerror="imgFallback(this)" alt="">`;
+}
+function imgFallback(img){
+  const alts = (img.getAttribute("data-alt") || "").split("|").filter(Boolean);
+  if (alts.length) {
+    img.src = alts.shift();
+    img.setAttribute("data-alt", alts.join("|"));
+  } else {
+    img.style.display = "none";
+  }
+}
+
+/* ===== 画像パック（zip）読み込み =====
+   ネット公開版には画像を含めないため、各スマホで画像パック.zipを
+   読み込んで端末内（IndexedDB）に保存する仕組み。追加ライブラリ不要 */
+let imgCache = {};  // "3_空条承太郎" → blob URL
+
+function idbOpen(){
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("standDrillImgs", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("imgs");
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idbPutAll(entries){
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction("imgs", "readwrite");
+    const st = tx.objectStore("imgs");
+    st.clear();
+    for (const [k, blob] of entries) st.put(blob, k);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbLoadAll(){
+  try {
+    const db = await idbOpen();
+    return await new Promise((res, rej) => {
+      const tx = db.transaction("imgs", "readonly");
+      const st = tx.objectStore("imgs");
+      const keysReq = st.getAllKeys();
+      const valsReq = st.getAll();
+      tx.oncomplete = () => {
+        const out = {};
+        keysReq.result.forEach((k, i) => { out[k] = valsReq.result[i]; });
+        res(out);
+      };
+      tx.onerror = () => rej(tx.error);
+    });
+  } catch(e){ return {}; }
+}
+async function initImgCache(){
+  const all = await idbLoadAll();
+  for (const k in all) imgCache[k] = URL.createObjectURL(all[k]);
+  updatePackStatus();
+}
+function updatePackStatus(){
+  const el = document.getElementById("packStatus");
+  const n = Object.keys(imgCache).length;
+  if (el && n > 0) el.textContent = `📦 画像パック読み込みずみ（${n}枚）`;
+}
+
+/* zip解凍（ブラウザ標準のDecompressionStreamを使用） */
+async function parseZip(buf){
+  const dv = new DataView(buf);
+  const u8 = new Uint8Array(buf);
+  let eocd = -1;
+  for (let i = buf.byteLength - 22; i >= 0; i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("zip形式ではありません");
+  const count = dv.getUint16(eocd + 10, true);
+  let off = dv.getUint32(eocd + 16, true);
+  const files = [];
+  const td = new TextDecoder("utf-8");
+  for (let n = 0; n < count; n++) {
+    if (dv.getUint32(off, true) !== 0x02014b50) break;
+    const method = dv.getUint16(off + 10, true);
+    const csize = dv.getUint32(off + 20, true);
+    const nameLen = dv.getUint16(off + 28, true);
+    const extraLen = dv.getUint16(off + 30, true);
+    const cmtLen = dv.getUint16(off + 32, true);
+    const lho = dv.getUint32(off + 42, true);
+    const name = td.decode(u8.subarray(off + 46, off + 46 + nameLen));
+    const lNameLen = dv.getUint16(lho + 26, true);
+    const lExtraLen = dv.getUint16(lho + 28, true);
+    const dataStart = lho + 30 + lNameLen + lExtraLen;
+    files.push({ name, method, data: u8.subarray(dataStart, dataStart + csize) });
+    off += 46 + nameLen + extraLen + cmtLen;
+  }
+  const out = [];
+  for (const f of files) {
+    if (f.name.endsWith("/")) continue;
+    let bytes;
+    if (f.method === 0) bytes = f.data;
+    else if (f.method === 8) {
+      const ds = new DecompressionStream("deflate-raw");
+      const stream = new Blob([f.data]).stream().pipeThrough(ds);
+      bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+    } else continue;
+    out.push({ name: f.name, bytes });
+  }
+  return out;
+}
+
+async function importImagePack(input){
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const status = document.getElementById("packStatus");
+  status.textContent = "読み込み中…（少し時間がかかります）";
+  try {
+    const entries = await parseZip(await file.arrayBuffer());
+    const put = [];
+    for (const e of entries) {
+      const m = e.name.match(/([^\/\\]+)\.(png|jpg|jpeg|webp)$/i);
+      if (!m) continue;
+      const mime = { png:"image/png", jpg:"image/jpeg", jpeg:"image/jpeg", webp:"image/webp" }[m[2].toLowerCase()];
+      put.push([m[1], new Blob([e.bytes], { type: mime })]);
+    }
+    if (!put.length) throw new Error("zipの中に画像がありません");
+    await idbPutAll(put);
+    for (const url of Object.values(imgCache)) URL.revokeObjectURL(url);
+    imgCache = {};
+    for (const [k, blob] of put) imgCache[k] = URL.createObjectURL(blob);
+    status.textContent = `✅ 画像 ${put.length} 枚を読み込みました！図鑑を見てみよう`;
+    sfxCorrect();
+  } catch(err) {
+    status.textContent = "❌ 読み込めませんでした（" + err.message + "）";
+  }
+  input.value = "";
+}
+
+function rollRarity(correct){
+  const r = GACHA_RATES[correct];
+  let x = Math.random() * 100;
+  for (const k of ["SS","S","A"]) {
+    if (x < r[k]) return k;
+    x -= r[k];
+  }
+  return "B";
+}
+
+function rollChar(rarity){
+  const pool = [];
+  CHARS.forEach((c, i) => { if (c[3] === rarity) pool.push([i, c[2]]); });
+  const total = pool.reduce((sum, p) => sum + p[1], 0);
+  let x = Math.random() * total;
+  for (const [i, w] of pool) {
+    if (x < w) return i;
+    x -= w;
+  }
+  return pool[pool.length - 1][0];
+}
+
+function renderGachaArea(){
+  const s = quizState;
+  const area = document.getElementById("gachaArea");
+  if (s.correct < GACHA_MIN_CORRECT) {
+    area.innerHTML = '<div class="gacha-locked">🔒 5問以上正解でカードガチャが引けるぞ…！</div>';
+    return;
+  }
+  if (s.gachaDone) { area.innerHTML = ""; return; }
+  const r = GACHA_RATES[s.correct];
+  area.innerHTML =
+    '<button class="gacha-cta" onclick="doGacha()">🃏 カードガチャを引くッ！</button>' +
+    `<div class="gacha-rates">排出率：SS ${r.SS}%　S ${r.S}%　A ${r.A}%　B ${r.B}%</div>`;
+}
+
+function doGacha(){
+  const s = quizState;
+  if (s.gachaDone || s.correct < GACHA_MIN_CORRECT) return;
+  s.gachaDone = true;
+  s.pendingCard = rollChar(rollRarity(s.correct));
+  renderGachaArea();
+  const rarity = CHARS[s.pendingCard][3];
+  document.getElementById("gachaInner").innerHTML =
+    '<div class="evo-dododo" id="gachaDodo">ゴ ゴ ゴ ゴ …</div>' +
+    '<div class="gacha-card gacha-back drop" id="gachaCard">？</div>' +
+    '<div id="gachaHint" style="margin-top:16px; font-size:13px; color:#cbbcf5; visibility:hidden;">カードをタップしてめくれッ！</div>';
+  document.getElementById("gacha").classList.add("show");
+  sfxGachaRoll();
+
+  const card = document.getElementById("gachaCard");
+  setTimeout(() => {                       // 着地の衝撃
+    card.classList.remove("drop");
+    noiseBurst(0, .25, .28, 250);
+  }, 860);
+  setTimeout(() => {                       // まず白いオーラ…
+    card.classList.add("aura-white");
+  }, 1150);
+  setTimeout(() => {                       // レア度の色に変化ッ！
+    card.classList.remove("aura-white");
+    card.classList.add("charge", "aura-" + rarity);
+    sfxCharge(rarity);
+    if (rarity === "S" || rarity === "SS") {
+      document.getElementById("gachaDodo").classList.add("dodo-big");
+    }
+    if (rarity === "SS") {
+      const g = document.getElementById("gacha");
+      g.classList.add("ss-bg");
+      const rays = document.createElement("div");
+      rays.className = "ss-rays";
+      g.insertBefore(rays, g.firstChild);
+      for (let i = 0; i < 10; i++) {
+        const sp = document.createElement("div");
+        sp.className = "ss-spark";
+        sp.textContent = pick(["✦", "✧", "★"]);
+        sp.style.left = (8 + Math.random() * 84) + "%";
+        sp.style.top = (8 + Math.random() * 78) + "%";
+        sp.style.fontSize = (16 + Math.random() * 22) + "px";
+        sp.style.animationDelay = (Math.random() * 1.1) + "s";
+        g.appendChild(sp);
+      }
+    }
+  }, 1950);
+  setTimeout(() => {                       // タップ解禁
+    document.getElementById("gachaHint").style.visibility = "visible";
+    card.onclick = revealGacha;
+    card.style.cursor = "pointer";
+  }, 2700);
+}
+
+function revealGacha(){
+  const idx = quizState.pendingCard;
+  if (idx == null) return;
+  quizState.pendingCard = null;
+  // 開封フラッシュ（SS演出の後片付けもここで）
+  const g = document.getElementById("gacha");
+  g.classList.remove("ss-bg");
+  g.querySelectorAll(".ss-rays, .ss-spark").forEach(el => el.remove());
+  const flash = document.createElement("div");
+  flash.className = "white-flash";
+  g.appendChild(flash);
+  setTimeout(() => flash.remove(), 550);
+  const [name, part, , rarity] = CHARS[idx];
+  const key = cardKey(idx);
+  const had = save.cards[key] || 0;
+  save.cards[key] = had + 1;
+  writeSave();
+  sfxReveal(rarity);
+  document.getElementById("gachaInner").innerHTML =
+    `<div class="gacha-card gacha-front card-r-${rarity}">` +
+      `<span class="rar-badge rar-${rarity}">${rarity}</span>` +
+      imgTag(idx, "char-img") +
+      `<div class="gacha-name">${name}</div>` +
+      `<div class="gacha-season">第${part}部</div>` +
+      (had === 0
+        ? '<div class="gacha-new">✨ NEW! 図鑑に登録ッ！</div>'
+        : `<div class="gacha-dupe">かぶり…（計${had + 1}枚目）</div>`) +
+    '</div>' +
+    '<button class="btn-sub" style="margin-top:18px;" onclick="closeGacha()">とじる</button>';
+}
+
+function closeGacha(){
+  const g = document.getElementById("gacha");
+  g.classList.remove("show", "ss-bg");
+  g.querySelectorAll(".ss-rays, .ss-spark").forEach(el => el.remove());
+}
+
+/* ===== 図鑑 ===== */
+let zukanSeason = 1;
+
+function openZukan(){ renderZukan(); showScreen("zukan"); }
+function setZukanSeason(p){ zukanSeason = p; renderZukan(); }
+
+function renderZukan(){
+  const ownedUnique = Object.keys(save.cards).length;
+  document.getElementById("zukanTotal").textContent = `コンプリート状況：${ownedUnique} / ${CHARS.length} キャラ`;
+  let tabs = "";
+  for (let p = 1; p <= 6; p++) {
+    tabs += `<button class="zukan-tab ${p === zukanSeason ? "on" : ""}" onclick="setZukanSeason(${p})">第${p}部</button>`;
+  }
+  document.getElementById("zukanTabs").innerHTML = tabs;
+
+  let html = "", got = 0, total = 0;
+  CHARS.forEach((c, i) => {
+    if (c[1] !== zukanSeason) return;
+    total++;
+    const n = save.cards[cardKey(i)] || 0;
+    if (n > 0) {
+      got++;
+      html += `<div class="z-card card-r-${c[3]}" onclick="showCardZoom(${i})"><span class="rar-badge rar-${c[3]}">${c[3]}</span>${imgTag(i, "z-img")}<div class="z-name">${c[0]}</div><div class="z-count">×${n}</div></div>`;
+    } else {
+      html += `<div class="z-card z-locked" onclick="showCardZoom(${i})"><span class="rar-badge rar-${c[3]}">${c[3]}</span>${imgTag(i, "z-img")}<div class="z-name">？？？</div><div class="z-count"></div></div>`;
+    }
+  });
+  document.getElementById("zukanProgress").textContent = `第${zukanSeason}部：${got} / ${total} ゲット`;
+  document.getElementById("zukanGrid").innerHTML = html;
+}
+
+function showCardZoom(idx){
+  const [name, part, , rarity] = CHARS[idx];
+  const n = save.cards[cardKey(idx)] || 0;
+  const owned = n > 0;
+  document.getElementById("zoomInner").innerHTML =
+    `<div class="zoom-card ${owned ? "card-r-" + rarity : "z-locked zoom-sil"}">` +
+      `<span class="rar-badge rar-${rarity}">${rarity}</span>` +
+      imgTag(idx, "zoom-img") +
+      `<div class="zoom-name">${owned ? name : "？？？"}</div>` +
+      `<div class="zoom-meta">第${part}部${owned ? `　×${n}枚` : "　まだ引けていない…"}</div>` +
+    '</div>' +
+    '<div class="zoom-close">タップしてとじる</div>';
+  document.getElementById("zoom").classList.add("show");
+}
+function closeZoom(){ document.getElementById("zoom").classList.remove("show"); }
+
+/* ===== 画面制御 ===== */
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(el => el.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  window.scrollTo(0,0);
+}
+function goHome(){
+  renderHome();
+  showScreen("home");
+}
+
+function renderHome(){
+  const stage = stageFor(save.level);
+  document.getElementById("charaEmoji").textContent = stage.e;
+  document.getElementById("charaName").textContent = stage.name;
+  document.getElementById("charaSub").textContent = stage.sub;
+  document.getElementById("lvBadge").textContent = `Lv.${save.level}`;
+  document.getElementById("streakText").textContent = `🔥 連続 ${save.streak} 日`;
+  const need = expNeed(save.level);
+  document.getElementById("expFill").style.width = Math.min(100, save.exp/need*100) + "%";
+  document.getElementById("expText").textContent = `つぎのレベルまで あと ${need - save.exp} EXP`;
+  updateSoundBtn();
+  document.getElementById("zukanCount").textContent = `（${Object.keys(save.cards).length} / ${CHARS.length}）`;
+  document.getElementById("stTotal").textContent = save.total;
+  document.getElementById("stCorrect").textContent = save.correct;
+  document.getElementById("stRate").textContent =
+    save.total > 0 ? Math.round(save.correct/save.total*100) + "%" : "-";
+}
+
+loadSave();
+renderHome();
+initImgCache();
+</script>
+</body>
+</html>
