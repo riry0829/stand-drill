@@ -47,6 +47,13 @@
   .sound-btn.off { opacity:.55; border-color:#4a3d6b; }
   .sound-btn:active { transform:scale(.92); }
 
+  .grade-chip {
+    display:block; margin:0 auto 12px; background:#2e1b57; border:1px solid #8a63d2;
+    color:#c9b8ff; border-radius:999px; padding:5px 16px; font-size:12px; font-weight:800;
+    font-family:inherit; cursor:pointer;
+  }
+  .grade-chip:active { transform:scale(.95); }
+
   /* キャラカード */
   .chara-card {
     background:linear-gradient(160deg,#40286e,#241245);
@@ -345,6 +352,7 @@
     <button class="sound-btn" id="soundBtn" onclick="toggleSound()">🔊</button>
     <h1>スタンド学習ドリル</h1>
     <div class="subtitle">— 黄金の精神で学べッ！ —</div>
+    <button class="grade-chip" id="gradeChip" onclick="showScreen('levelSel')">コース：小学4年生 ▼</button>
 
     <div class="chara-card">
       <span class="menacing" style="top:8px; left:10px;">ゴ</span>
@@ -364,19 +372,19 @@
     <div class="subject-grid">
       <button class="subj-btn" onclick="startQuiz('keisan')">
         <span class="icon">🧮</span>
-        <span>計算ドリル<span class="desc">わり算・小数・分数・単位・時こく（3年後半〜4年）</span></span>
+        <span><span id="tKeisan">計算ドリル</span><span class="desc" id="dKeisan">わり算・小数・分数・単位・時こく（3年後半〜4年）</span></span>
       </button>
       <button class="subj-btn" onclick="startQuiz('kanji')">
         <span class="icon">✍️</span>
-        <span>漢字クイズ<span class="desc">3年生・4年生の漢字の読み方</span></span>
+        <span><span id="tKanji">漢字クイズ</span><span class="desc" id="dKanji">3年生・4年生の漢字の読み方</span></span>
       </button>
       <button class="subj-btn" onclick="startQuiz('chiri')">
-        <span class="icon">🗾</span>
-        <span>都道府県クイズ<span class="desc">県庁所在地・名産・地方</span></span>
+        <span class="icon" id="iChiri">🗾</span>
+        <span><span id="tChiri">都道府県クイズ</span><span class="desc" id="dChiri">県庁所在地・名産・地方</span></span>
       </button>
       <button class="subj-btn" onclick="startQuiz('rika')">
         <span class="icon">🔬</span>
-        <span>理科クイズ<span class="desc">こん虫・植物・電気・じしゃく・天気（3年〜4年）</span></span>
+        <span><span id="tRika">理科クイズ</span><span class="desc" id="dRika">こん虫・植物・電気・じしゃく・天気（3年〜4年）</span></span>
       </button>
       <button class="subj-btn mix" onclick="startQuiz('mix')">
         <span class="icon">⭐</span>
@@ -400,6 +408,25 @@
       スタンド学習ドリル（家族用）
       <button onclick="resetSave()">データリセット</button>
     </footer>
+  </div>
+
+  <!-- コース選択 -->
+  <div id="levelSel" class="screen">
+    <h1>スタンド学習ドリル</h1>
+    <div class="subtitle">— コースをえらべッ！ —</div>
+    <div class="subject-grid">
+      <button class="subj-btn" onclick="setGrade('e4')">
+        <span class="icon">🎒</span>
+        <span>小学4年生コース<span class="desc">3年後半〜4年1学期／計算・漢字・都道府県・理科</span></span>
+      </button>
+      <button class="subj-btn" onclick="setGrade('j1')">
+        <span class="icon">🏫</span>
+        <span>中学1年生コース<span class="desc">正負の数・中学漢字・世界地理・中1理科</span></span>
+      </button>
+    </div>
+    <div style="font-size:11px; color:#8a76c0; text-align:center; margin-top:16px; line-height:1.8;">
+      コースはホーム画面の「コース」ボタンから いつでも切りかえられる。<br>キャラと図鑑は共通で育つぞ！
+    </div>
   </div>
 
   <!-- クイズ -->
@@ -492,7 +519,7 @@ const MIX_BONUS = 10;
 
 /* ===== セーブデータ ===== */
 const SAVE_KEY = "standDrillSave_v1";
-let save = { exp:0, level:1, total:0, correct:0, streak:0, lastPlay:"", cards:{}, sound:true, missed:[] };
+let save = { exp:0, level:1, total:0, correct:0, streak:0, lastPlay:"", cards:{}, sound:true, missed:[], grade:"" };
 
 function loadSave(){
   try {
@@ -955,6 +982,143 @@ const RIKA = [
   ["風が強いほど ほかけ車の進み方は？","遠くまで進む",["近くで止まる","うしろへ進む","変わらない"]],
 ];
 
+/* ===== 中1コース：漢字の読み ===== */
+const KANJI_J1 = [
+  ["把握","はあく",["はおく","ひあく","はわく"]],
+  ["貢献","こうけん",["こうきん","くけん","こうげん"]],
+  ["雰囲気","ふんいき",["ふいんき","ふんいぎ","ふういき"]],
+  ["境内","けいだい",["きょうない","けいない","きょうだい"]],
+  ["老舗","しにせ",["おいみせ","ろうしゃ","ふるみせ"]],
+  ["匿名","とくめい",["じゃくめい","かくめい","のくめい"]],
+  ["頻繁","ひんぱん",["ひんはん","びんぱん","ひんばん"]],
+  ["慎重","しんちょう",["しんじゅう","じんちょう","しんじょう"]],
+  ["克服","こくふく",["かつふく","こくぶく","きょくふく"]],
+  ["鍛える","きたえる",["たんえる","きだえる","ねりえる"]],
+  ["著しい","いちじるしい",["あらわしい","ちょしい","いちじましい"]],
+  ["遂げる","とげる",["すいげる","ついげる","なしげる"]],
+  ["催す","もよおす",["さいす","うながす","もようす"]],
+  ["鮮やか","あざやか",["せんやか","すずやか","さわやか"]],
+  ["朗らか","ほがらか",["ろうらか","あきらか","やわらか"]],
+  ["危惧","きぐ",["きく","きぎ","あやぐ"]],
+  ["憧れる","あこがれる",["どうれる","しょうれる","つのれる"]],
+  ["曖昧","あいまい",["あいみ","あんまい","あいばい"]],
+  ["披露","ひろう",["ひろ","はろう","ぴろう"]],
+  ["妥協","だきょう",["たきょう","だこう","ゆきょう"]],
+  ["撮影","さつえい",["とりえい","さいえい","せつえい"]],
+  ["均衡","きんこう",["きんしょう","ぎんこう","きんごう"]],
+  ["循環","じゅんかん",["じゅんわ","しゅんかん","じゅかん"]],
+  ["貫く","つらぬく",["かんく","ぬらつく","とおぬく"]],
+  ["漂う","ただよう",["ひょうう","たゆよう","さまよう"]],
+  ["遮る","さえぎる",["しゃる","さえきる","へだてる"]],
+  ["促す","うながす",["そくす","ながす","せかす"]],
+  ["滞る","とどこおる",["たいる","とどまる","しぶる"]],
+  ["繕う","つくろう",["ぜんう","つづろう","なおう"]],
+  ["廃れる","すたれる",["はいれる","くずれる","さびれる"]],
+  ["覆う","おおう",["ふくう","かぶう","おいう"]],
+  ["掲げる","かかげる",["けいげる","かがげる","さげる"]],
+  ["弾む","はずむ",["だんむ","たまむ","ひずむ"]],
+  ["響く","ひびく",["きょうく","とどく","どよく"]],
+  ["誇る","ほこる",["こる","たかる","おごる"]],
+  ["憩い","いこい",["けいい","やすい","くつろい"]],
+  ["潤う","うるおう",["じゅんう","ぬれう","しめおう"]],
+  ["挑む","いどむ",["ちょうむ","のぞむ","たたむ"]],
+  ["阻む","はばむ",["そむ","こばむ","さまたむ"]],
+  ["蓄える","たくわえる",["ちくえる","たくえる","かかえる"]],
+  ["委ねる","ゆだねる",["いねる","まかねる","つだねる"]],
+  ["侮る","あなどる",["ぶる","さとる","あざける"]],
+  ["携わる","たずさわる",["けいわる","かかわる","もちわる"]],
+  ["名残","なごり",["めいざん","なのこり","みょうり"]],
+  ["行方","ゆくえ",["いきかた","こうほう","ゆきほう"]],
+  ["土産","みやげ",["どさん","つちさん","とさん"]],
+];
+
+/* ===== 中1コース：世界地理 ===== */
+const CHIRI_J1 = [
+  ["世界でいちばん大きい大陸は？","ユーラシア大陸",["アフリカ大陸","北アメリカ大陸","南極大陸"]],
+  ["世界でいちばん広い海洋は？","太平洋",["大西洋","インド洋","北極海"]],
+  ["世界の大陸は ぜんぶでいくつ？","6つ",["5つ","7つ","8つ"]],
+  ["三大洋は 太平洋・大西洋と あと1つは？","インド洋",["北極海","地中海","日本海"]],
+  ["世界一長い川は？","ナイル川",["アマゾン川","長江","ミシシッピ川"]],
+  ["流域面積が世界一の川は？","アマゾン川",["ナイル川","ガンジス川","黄河"]],
+  ["世界一高い山は？","エベレスト",["キリマンジャロ","モンブラン","アコンカグア"]],
+  ["面積が世界一大きい国は？","ロシア",["カナダ","中国","アメリカ合衆国"]],
+  ["面積が世界で2番目に大きい国は？","カナダ",["ロシア","アメリカ合衆国","ブラジル"]],
+  ["現在、人口が世界一多い国は？","インド",["中国","アメリカ合衆国","インドネシア"]],
+  ["アメリカ合衆国の首都は？","ワシントンD.C.",["ニューヨーク","ロサンゼルス","シカゴ"]],
+  ["オーストラリアの首都は？","キャンベラ",["シドニー","メルボルン","パース"]],
+  ["カナダの首都は？","オタワ",["トロント","バンクーバー","モントリオール"]],
+  ["ブラジルの首都は？","ブラジリア",["リオデジャネイロ","サンパウロ","ブエノスアイレス"]],
+  ["中国の首都は？","ペキン（北京）",["シャンハイ","ホンコン","ナンキン"]],
+  ["韓国の首都は？","ソウル",["プサン","インチョン","ピョンヤン"]],
+  ["イギリスの首都は？","ロンドン",["マンチェスター","リバプール","エディンバラ"]],
+  ["フランスの首都は？","パリ",["リヨン","マルセイユ","ニース"]],
+  ["ドイツの首都は？","ベルリン",["ミュンヘン","フランクフルト","ハンブルク"]],
+  ["イタリアの首都は？","ローマ",["ミラノ","ベネチア","ナポリ"]],
+  ["エジプトの首都は？","カイロ",["アレクサンドリア","カサブランカ","ナイロビ"]],
+  ["インドの首都は？","ニューデリー",["ムンバイ","コルカタ","バンガロール"]],
+  ["トルコの首都は？","アンカラ",["イスタンブール","イズミル","アテネ"]],
+  ["経度0度の本初子午線が通る都市は？","ロンドン",["パリ","ニューヨーク","カイロ"]],
+  ["緯度0度の線を何という？","赤道",["本初子午線","回帰線","日付変更線"]],
+  ["日本の標準時のもとになる経線は 東経何度？","135度",["120度","140度","150度"]],
+  ["東経135度の経線が通る兵庫県の都市は？","明石市",["神戸市","姫路市","西宮市"]],
+  ["経度15度ごとに生じる時差は？","1時間",["30分","2時間","15分"]],
+  ["地球一周は およそ何km？","約4万km",["約1万km","約10万km","約40万km"]],
+  ["赤道付近に広がる気候帯は？","熱帯",["温帯","乾燥帯","寒帯"]],
+  ["日本の大部分がふくまれる気候帯は？","温帯",["熱帯","亜寒帯","乾燥帯"]],
+  ["砂漠が広がる気候帯は？","乾燥帯",["熱帯","温帯","寒帯"]],
+  ["エジプトがある州は？","アフリカ州",["アジア州","ヨーロッパ州","オセアニア州"]],
+  ["オーストラリアがある州は？","オセアニア州",["アジア州","アフリカ州","南アメリカ州"]],
+  ["ブラジルがある州は？","南アメリカ州",["北アメリカ州","アフリカ州","ヨーロッパ州"]],
+  ["日本がある州は？","アジア州",["オセアニア州","ヨーロッパ州","北アメリカ州"]],
+  ["海に面していない「内陸国」はどれ？","モンゴル",["日本","ニュージーランド","フィリピン"]],
+  ["まわりを海に囲まれた「島国」はどれ？","ニュージーランド",["モンゴル","スイス","オーストリア"]],
+];
+
+/* ===== 中1コース：理科 ===== */
+const RIKA_J1 = [
+  ["花の中心にあるのは？","めしべ",["おしべ","花弁","がく"]],
+  ["花のいちばん外側にあるのは？","がく",["花弁","おしべ","めしべ"]],
+  ["受粉のあと、種子になる部分は？","胚珠",["子房","やく","柱頭"]],
+  ["受粉のあと、果実になる部分は？","子房",["胚珠","がく","花弁"]],
+  ["胚珠がむき出しになっている植物を何という？","裸子植物",["被子植物","シダ植物","コケ植物"]],
+  ["次のうち裸子植物はどれ？","マツ",["サクラ","アブラナ","ツツジ"]],
+  ["双子葉類の葉脈は？","網状脈",["平行脈","ひげ脈","放射脈"]],
+  ["単子葉類の根のつくりは？","ひげ根",["主根と側根","球根","気根"]],
+  ["光合成が行われる緑色の粒を何という？","葉緑体",["細胞壁","核","液胞"]],
+  ["光合成で発生する気体は？","酸素",["二酸化炭素","水素","ちっ素"]],
+  ["光合成の材料は 水と何？","二酸化炭素",["酸素","ちっ素","水素"]],
+  ["種子をつくらず 胞子でふえる植物は？","シダ植物",["被子植物","裸子植物","双子葉類"]],
+  ["密度の求め方は？","質量 ÷ 体積",["体積 ÷ 質量","質量 × 体積","質量 ＋ 体積"]],
+  ["燃やすと二酸化炭素が出る、砂糖などの物質を何という？","有機物",["無機物","金属","純金属"]],
+  ["金属に共通する性質は？","電気をよく通す",["磁石につく","水にとける","燃えやすい"]],
+  ["次のうち磁石につかない金属は？","アルミニウム",["鉄","ニッケル","コバルト"]],
+  ["ものを燃やすはたらきがある気体は？","酸素",["二酸化炭素","ちっ素","水素"]],
+  ["石灰水を白くにごらせる気体は？","二酸化炭素",["酸素","水素","アンモニア"]],
+  ["もっとも軽い気体は？","水素",["酸素","ちっ素","二酸化炭素"]],
+  ["水に非常にとけやすく、鼻をさすにおいの気体は？","アンモニア",["酸素","水素","二酸化炭素"]],
+  ["空気中にいちばん多くふくまれる気体は？","ちっ素",["酸素","二酸化炭素","アルゴン"]],
+  ["状態変化で 変わらないものは？","質量",["体積","すがた","分子の運動"]],
+  ["水が沸とうする温度は？","100℃",["0℃","50℃","120℃"]],
+  ["氷がとける温度は？","0℃",["−10℃","10℃","100℃"]],
+  ["食塩水のように2種類以上の物質が混ざったものを何という？","混合物",["純物質","単体","結晶"]],
+  ["光が鏡ではね返る現象を何という？","反射",["屈折","直進","吸収"]],
+  ["入射角と反射角の大きさの関係は？","等しい",["入射角が大きい","反射角が大きい","関係はない"]],
+  ["光が水から空気へ進むときに折れ曲がる現象は？","屈折",["反射","直進","反転"]],
+  ["音が伝わらないのはどこ？","真空の中",["空気の中","水の中","鉄の中"]],
+  ["空気中を伝わる音の速さは およそ？","秒速340m",["秒速34m","秒速3400m","秒速30万km"]],
+  ["力の大きさの単位は？","ニュートン（N）",["ワット","ボルト","パスカル"]],
+  ["100gの物体にはたらく重力は およそ？","1N",["10N","0.1N","100N"]],
+  ["「ばねののびは加えた力の大きさに比例する」という法則は？","フックの法則",["ニュートンの法則","パスカルの原理","アルキメデスの原理"]],
+  ["月面に持っていくと変わるのはどっち？","重さ",["質量","体積","密度"]],
+  ["地震の はじめの小さなゆれを何という？","初期微動",["主要動","余震","縦波動"]],
+  ["初期微動を伝える波は？","P波",["S波","T波","X波"]],
+  ["地震のゆれの大きさを表す階級は？","震度",["マグニチュード","ヘクトパスカル","デシベル"]],
+  ["地震の規模（エネルギーの大きさ）を表すのは？","マグニチュード",["震度","ニュートン","アンペア"]],
+  ["マグマが地表近くで急に冷えてできた岩石は？","火山岩",["深成岩","堆積岩","変成岩"]],
+  ["うすい塩酸をかけると泡が出る堆積岩は？","石灰岩",["チャート","砂岩","れき岩"]],
+  ["地層ができた年代を知る手がかりになる化石は？","示準化石",["示相化石","生きている化石","微化石"]],
+];
+
 /* ===== 計算問題ジェネレーター（小4レベル） ===== */
 function rnd(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
 function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
@@ -1056,6 +1220,90 @@ function genMath(){
   return { q:`<span class="big">${q} = ?</span>`, a:String(a), w:numWrongs(a, offsets) };
 }
 
+/* ===== 中1数学ジェネレーター（正負の数・文字式・方程式） ===== */
+function fmtFirst(n){ return n < 0 ? "−" + (-n) : String(n); }
+function fmtNext(n){ return n < 0 ? "(−" + (-n) + ")" : String(n); }
+function jNum(n){ return String(n).replace("-", "−"); }   // 答えのマイナスも「−」で統一
+function jWrongs(a){
+  const s = new Set();
+  const cands = [-a, a + 1, a - 1, a + 2, a - 2, a + 10, a - 10, -a + 1, -a - 1];
+  let gi = 0;
+  while (s.size < 3 && gi < 60) {
+    const c = cands[gi % cands.length] + Math.floor(gi / cands.length);
+    if (c !== a) s.add(c);
+    gi++;
+  }
+  return [...s].slice(0, 3).map(jNum);
+}
+
+function genMathJ1(){
+  const t = rnd(1, 9);
+  const big = s => `<span class="big">${s}</span>`;
+  if (t === 1) {               // 正負のたし算・ひき算
+    const x = rnd(-15, 15) || -7, y = rnd(-15, 15) || 3;
+    const isAdd = Math.random() < .5;
+    const a = isAdd ? x + y : x - y;
+    return { q: big(`${fmtFirst(x)} ${isAdd ? "+" : "−"} ${fmtNext(y)} = ?`), a: jNum(a), w: jWrongs(a) };
+  }
+  if (t === 2) {               // 正負のかけ算
+    const x = rnd(-9, 9) || 2, y = rnd(-9, 9) || -3;
+    const a = x * y;
+    return { q: big(`${fmtFirst(x)} × ${fmtNext(y)} = ?`), a: jNum(a), w: jWrongs(a) };
+  }
+  if (t === 3) {               // 正負のわり算（わり切れる）
+    const y = pick([-9,-8,-7,-6,-5,-4,-3,-2,2,3,4,5,6,7,8,9]);
+    const q0 = rnd(-9, 9) || 4;
+    const x = y * q0;
+    return { q: big(`${fmtFirst(x)} ÷ ${fmtNext(y)} = ?`), a: jNum(q0), w: jWrongs(q0) };
+  }
+  if (t === 4) {               // 累乗（符号のひっかけ）※n=2はn²=2nと衝突するため3以上
+    const kind = rnd(1, 3);
+    if (kind === 1) { const n = rnd(3, 9); return { q: big(`(−${n})² = ?`), a: jNum(n*n), w: [jNum(-n*n), jNum(2*n), jNum(-2*n)] }; }
+    if (kind === 2) { const n = rnd(3, 9); return { q: big(`−${n}² = ?`), a: jNum(-n*n), w: [jNum(n*n), jNum(-2*n), jNum(2*n)] }; }
+    const n = rnd(2, 4); return { q: big(`(−${n})³ = ?`), a: jNum(-n*n*n), w: [jNum(n*n*n), jNum(-3*n), jNum(3*n)] };
+  }
+  if (t === 5) {               // 四則混合
+    const x = rnd(-9, 9) || 5, y = rnd(2, 9), z = rnd(-9, 9) || -4;
+    const a = x + y * z;
+    return { q: big(`${fmtFirst(x)} + ${y} × ${fmtNext(z)} = ?`), a: jNum(a), w: jWrongs(a) };
+  }
+  if (t === 6) {               // 文字式
+    if (Math.random() < .5) {
+      const p = rnd(2, 9), q2 = rnd(2, 9), s = p + q2;
+      const w2 = (p * q2 === s) ? `${s + 2}x` : `${p * q2}x`;  // 2x+2x のとき 4x が答えと衝突するのを回避
+      return { q: big(`${p}x + ${q2}x = ?`), a: `${s}x`, w: [`${s}x²`, w2, `${s}`] };
+    }
+    const k = rnd(2, 5), p = rnd(2, 9), q2 = rnd(2, 9);
+    return { q: big(`${k}(${p}x + ${q2}) = ?`), a: `${k*p}x + ${k*q2}`, w: [`${k*p}x + ${q2}`, `${p}x + ${k*q2}`, `${k*p}x − ${k*q2}`] };
+  }
+  if (t === 7) {               // 式の値（代入）
+    const xv = rnd(-6, 6) || -3, p = rnd(2, 6), q2 = rnd(-9, 9) || 5;
+    const a = p * xv + q2;
+    return { q: `x = ${fmtFirst(xv)} のとき、<span class="big">${p}x ${q2 >= 0 ? "+ " + q2 : "− " + (-q2)}</span> の値は？`, a: jNum(a), w: jWrongs(a) };
+  }
+  if (t === 8) {               // 一次方程式
+    const xv = rnd(-8, 8) || 3, p = rnd(2, 6), q2 = rnd(-10, 10) || 4;
+    const rhs = p * xv + q2;
+    return { q: big(`${p}x ${q2 >= 0 ? "+ " + q2 : "− " + (-q2)} = ${jNum(rhs)}`) + "<br>x の値は？", a: jNum(xv), w: jWrongs(xv) };
+  }
+  if (Math.random() < .5) {    // 絶対値
+    const n = rnd(2, 19);
+    const sign = Math.random() < .5 ? -n : n;
+    return { q: big(`|${fmtFirst(sign)}| = ?`), a: String(n), w: [jNum(-n), String(n + 1), String(n - 1)] };
+  }
+  const primes = [2,3,5,7,11,13,17,19,23,29,31,37];
+  const comps = [9,15,21,25,27,33,35,39,49,51,57,63].sort(() => Math.random() - .5);
+  return { q: "次のうち「素数」はどれ？", a: String(pick(primes)), w: comps.slice(0, 3).map(String) };
+}
+
+/* コースに応じた問題バンクを返す */
+function bankFor(subj){
+  const j = save.grade === "j1";
+  if (subj === "kanji") return j ? KANJI_J1 : KANJI;
+  if (subj === "chiri") return j ? CHIRI_J1 : CHIRI;
+  return j ? RIKA_J1 : RIKA;
+}
+
 function fromBank(bank, kanjiMode){
   const item = pick(bank);
   if (kanjiMode) {
@@ -1072,7 +1320,7 @@ const MISS_MAX = 40;
 function addMiss(item){
   if (!Array.isArray(save.missed)) save.missed = [];
   if (!save.missed.some(m => m.q === item.q)) {
-    save.missed.push({ q:item.q, a:item.a, w:item.w, s:item.s });
+    save.missed.push({ q:item.q, a:item.a, w:item.w, s:item.s, lv:save.grade || "e4" });
     if (save.missed.length > MISS_MAX) save.missed.shift();
   }
   writeSave();
@@ -1091,10 +1339,10 @@ function buildSet(subject){
     if (subject === "mix") subj = pick(["keisan","kanji","chiri","rika"]);
     let item, key, guard = 0;
     do {
-      if (subj === "keisan") item = genMath();
-      else if (subj === "kanji") item = fromBank(KANJI, true);
-      else if (subj === "rika") item = fromBank(RIKA, false);
-      else item = fromBank(CHIRI, false);
+      if (subj === "keisan") item = save.grade === "j1" ? genMathJ1() : genMath();
+      else if (subj === "kanji") item = fromBank(bankFor("kanji"), true);
+      else if (subj === "rika") item = fromBank(bankFor("rika"), false);
+      else item = fromBank(bankFor("chiri"), false);
       key = item.q;
       guard++;
     } while (used.has(key) && guard < 30);
@@ -1104,7 +1352,10 @@ function buildSet(subject){
   }
   // 前に間違えた問題を「復習もんだい」としてまぜる（少しだけ出やすくする）
   // 1セットあたり 0〜2問・平均1問ほど
-  const pool = (save.missed || []).filter(m => (subject === "mix" || m.s === subject) && !used.has(m.q));
+  const pool = (save.missed || []).filter(m =>
+    (subject === "mix" || m.s === subject) &&
+    (m.lv || "e4") === (save.grade || "e4") &&
+    !used.has(m.q));
   const shuffled = [...pool].sort(() => Math.random() - .5);
   const target = Math.min(shuffled.length, (Math.random() < .7 ? 1 : 0) + (Math.random() < .35 ? 1 : 0));
   const usedPos = new Set();
@@ -1714,6 +1965,25 @@ function goHome(){
   showScreen("home");
 }
 
+function setGrade(g){
+  save.grade = g;
+  writeSave();
+  sfxCorrect();
+  goHome();
+}
+
+function updateGradeUI(){
+  const j = save.grade === "j1";
+  document.getElementById("gradeChip").textContent = "コース：" + (j ? "中学1年生" : "小学4年生") + " ▼";
+  document.getElementById("tKeisan").textContent = j ? "数学ドリル" : "計算ドリル";
+  document.getElementById("dKeisan").textContent = j ? "正負の数・累乗・文字式・一次方程式" : "わり算・小数・分数・単位・時こく（3年後半〜4年）";
+  document.getElementById("dKanji").textContent = j ? "中学レベルの読み方（雰囲気・老舗・把握…）" : "3年生・4年生の漢字の読み方";
+  document.getElementById("iChiri").textContent = j ? "🌍" : "🗾";
+  document.getElementById("tChiri").textContent = j ? "地理クイズ" : "都道府県クイズ";
+  document.getElementById("dChiri").textContent = j ? "世界の国と首都・大陸と海洋・時差" : "県庁所在地・名産・地方";
+  document.getElementById("dRika").textContent = j ? "花のつくり・気体・光と音・地震（中1）" : "こん虫・植物・電気・じしゃく・天気（3年〜4年）";
+}
+
 function renderHome(){
   const stage = stageFor(save.level);
   document.getElementById("charaEmoji").textContent = stage.e;
@@ -1725,6 +1995,7 @@ function renderHome(){
   document.getElementById("expFill").style.width = Math.min(100, save.exp/need*100) + "%";
   document.getElementById("expText").textContent = `つぎのレベルまで あと ${need - save.exp} EXP`;
   updateSoundBtn();
+  updateGradeUI();
   document.getElementById("zukanCount").textContent = `（${Object.keys(save.cards).length} / ${CHARS.length}）`;
   document.getElementById("stTotal").textContent = save.total;
   document.getElementById("stCorrect").textContent = save.correct;
@@ -1735,6 +2006,7 @@ function renderHome(){
 loadSave();
 renderHome();
 initImgCache();
+if (!save.grade) showScreen("levelSel");  // はじめての起動ではコース選択から
 </script>
 </body>
 </html>
