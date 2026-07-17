@@ -482,7 +482,7 @@
     <div class="zukan-progress" id="bossProgress"></div>
     <div class="subject-grid" id="bossList"></div>
     <div style="font-size:11px; color:#8a76c0; text-align:center; margin-top:14px; line-height:1.8;">
-      正解するとデッキのパワーぶんダメージ！<br>まちがえるとボスの反撃を受ける。HPが0になる前にたおせッ！
+      正解するとデッキのパワーぶんダメージ！まちがえるとボスの反撃を受ける。<br>バトルは<b>どちらかのHPが0になるまで無制限</b>に続くぞ。<br>ボスをたおすと<b style="color:#ffd54a;">SS 25％の豪華ガチャ</b>が引けるッ！
     </div>
   </div>
 
@@ -1648,7 +1648,9 @@ function startQuiz(subject){
 function renderQuestion(){
   const s = quizState;
   const item = s.questions[s.index];
-  document.getElementById("qProgress").textContent = `第${s.index+1}問 / ${QUESTIONS_PER_SET}`;
+  document.getElementById("qProgress").textContent = s.battle
+    ? `第${s.index+1}問`
+    : `第${s.index+1}問 / ${QUESTIONS_PER_SET}`;
   document.getElementById("comboText").textContent = s.combo >= 2 ? `🔥${s.combo}コンボ!` : "";
   document.getElementById("qText").innerHTML =
     (item.review ? '<div class="review-tag">🔁 復習もんだい</div>' : '') + item.q;
@@ -1702,7 +1704,13 @@ function answer(btn, isCorrect, correctAnswer){
 
   setTimeout(() => {
     s.index++;
-    if (s.battle && (battleState.bossHp <= 0 || battleState.playerHp <= 0)) { finishQuiz(); return; }
+    if (s.battle) {
+      // ボス戦は どちらかのHPが0になるまで無制限に続く
+      if (battleState.bossHp <= 0 || battleState.playerHp <= 0) { finishQuiz(); return; }
+      if (s.index >= s.questions.length) s.questions.push(...buildSet("mix"));
+      renderQuestion();
+      return;
+    }
     if (s.index < QUESTIONS_PER_SET) renderQuestion();
     else finishQuiz();
   }, 1100);
@@ -1721,13 +1729,13 @@ function showFx(text, ok){
 function finishQuiz(){
   const s = quizState;
   let exp = s.correct * EXP_PER_CORRECT + s.bonusExp;
-  if (s.correct === QUESTIONS_PER_SET) exp += PERFECT_BONUS;
+  if (!s.battle && s.correct === QUESTIONS_PER_SET) exp += PERFECT_BONUS;
   if (s.subject === "mix") exp += MIX_BONUS;
 
   const battle = !!s.battle;
   const win = battle && battleState.bossHp <= 0;
   if (battle) {
-    s.gachaTier = win ? Math.min(8, Math.max(5, s.correct)) : 0;
+    s.battleWin = win;
     if (win) {
       exp += 50 + battleState.bossIdx * 20;
       if (battleState.bossIdx === save.bossCleared) save.bossCleared++;
@@ -2063,8 +2071,10 @@ async function importImagePack(input){
   input.value = "";
 }
 
-function rollRarity(correct){
-  const r = GACHA_RATES[correct];
+/* ボス撃破ガチャは全レア度25％ずつ */
+const GACHA_RATES_BOSS = { SS:25, S:25, A:25, B:25 };
+
+function rollRarityFrom(r){
   let x = Math.random() * 100;
   for (const k of ["SS","S","A"]) {
     if (x < r[k]) return k;
@@ -2072,6 +2082,7 @@ function rollRarity(correct){
   }
   return "B";
 }
+function rollRarity(correct){ return rollRarityFrom(GACHA_RATES[correct]); }
 
 function rollChar(rarity){
   const pool = [];
@@ -2090,23 +2101,22 @@ function rollChar(rarity){
   return pool[pool.length - 1][0];
 }
 
-function gachaTierOf(s){
-  const t = s.gachaTier !== undefined ? s.gachaTier : s.correct;
-  return Math.min(8, t);
+function gachaRatesOf(s){
+  if (s.battle) return s.battleWin ? GACHA_RATES_BOSS : null;
+  return s.correct >= GACHA_MIN_CORRECT ? GACHA_RATES[Math.min(8, s.correct)] : null;
 }
 
 function renderGachaArea(){
   const s = quizState;
   const area = document.getElementById("gachaArea");
-  const tier = gachaTierOf(s);
-  if (tier < GACHA_MIN_CORRECT) {
+  const r = gachaRatesOf(s);
+  if (!r) {
     area.innerHTML = s.battle
       ? '<div class="gacha-locked">🔒 ボスに勝利するとカードガチャが引けるぞ…！</div>'
       : '<div class="gacha-locked">🔒 5問以上正解でカードガチャが引けるぞ…！</div>';
     return;
   }
   if (s.gachaDone) { area.innerHTML = ""; return; }
-  const r = GACHA_RATES[tier];
   area.innerHTML =
     '<button class="gacha-cta" onclick="doGacha()">🃏 カードガチャを引くッ！</button>' +
     `<div class="gacha-rates">排出率：SS ${r.SS}%　S ${r.S}%　A ${r.A}%　B ${r.B}%</div>`;
@@ -2114,10 +2124,10 @@ function renderGachaArea(){
 
 function doGacha(){
   const s = quizState;
-  const tier = gachaTierOf(s);
-  if (s.gachaDone || tier < GACHA_MIN_CORRECT) return;
+  const rates = gachaRatesOf(s);
+  if (s.gachaDone || !rates) return;
   s.gachaDone = true;
-  s.pendingCard = rollChar(rollRarity(tier));
+  s.pendingCard = rollChar(rollRarityFrom(rates));
   renderGachaArea();
   const rarity = CHARS[s.pendingCard][3];
   document.getElementById("gachaInner").innerHTML =
@@ -2206,12 +2216,12 @@ function closeGacha(){
 
 /* ===== ボスバトル ===== */
 const BOSSES = [
-  { name:"ディオ・ブランドー", part:1, hp:120, atk:25 },
-  { name:"カーズ",             part:2, hp:160, atk:30 },
-  { name:"DIO",                part:3, hp:200, atk:35 },
-  { name:"吉良吉影",           part:4, hp:240, atk:40 },
-  { name:"ディアボロ",         part:5, hp:280, atk:45 },
-  { name:"エンリコ・プッチ",   part:6, hp:320, atk:50 },
+  { name:"ディオ・ブランドー", part:1, hp:1200, atk:25 },
+  { name:"カーズ",             part:2, hp:1600, atk:30 },
+  { name:"DIO",                part:3, hp:2000, atk:35 },
+  { name:"吉良吉影",           part:4, hp:2400, atk:40 },
+  { name:"ディアボロ",         part:5, hp:2800, atk:45 },
+  { name:"エンリコ・プッチ",   part:6, hp:3200, atk:50 },
 ];
 const CARD_POWER = { SS:50, S:30, A:20, B:10 };
 const PLAYER_HP = 100;
