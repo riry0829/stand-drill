@@ -335,6 +335,49 @@
   .zoom-meta { font-size:14px; color:#cbbcf5; }
   .zoom-close { font-size:12px; color:#8a76c0; margin-top:14px; }
 
+  /* ===== ボスバトル ===== */
+  .btn-boss {
+    display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+    margin-top:12px; background:linear-gradient(135deg,#7a1f2e,#3d0e16);
+    border:2px solid #ff5a6e; border-radius:16px; padding:14px;
+    color:#ffd6da; font-size:17px; font-weight:800; cursor:pointer; font-family:inherit;
+  }
+  .btn-boss:active { transform:scale(.97); }
+
+  .boss-card {
+    display:flex; align-items:center; gap:12px; width:100%;
+    background:linear-gradient(135deg,#4a2f80,#2c1755);
+    border:2px solid #8a63d2; border-radius:16px; padding:10px 14px;
+    color:#fff; font-family:inherit; text-align:left; cursor:pointer;
+  }
+  .boss-card:active { transform:scale(.98); }
+  .boss-card:disabled { opacity:.4; cursor:default; }
+  .boss-img { width:56px; height:56px; object-fit:contain; border-radius:8px; flex-shrink:0; }
+  .boss-sil { filter:brightness(0); opacity:.9; }
+  .boss-info { display:flex; flex-direction:column; gap:2px; font-size:14px; font-weight:800; }
+  .boss-meta { font-size:11px; color:#c9b8ff; font-weight:600; }
+  .boss-state { font-size:11px; color:#ffd54a; font-weight:700; }
+
+  #battleBar {
+    background:linear-gradient(160deg,#3b2569,#221142);
+    border:2px solid #ff5a6e; border-radius:14px; padding:10px 12px; margin-bottom:10px;
+  }
+  .bb-boss { display:flex; gap:10px; align-items:center; }
+  .bb-img { width:44px; height:44px; object-fit:contain; border-radius:6px; flex-shrink:0; }
+  .bb-info { flex:1; font-size:13px; font-weight:800; }
+  .hpbar { height:10px; background:rgba(0,0,0,.5); border-radius:999px; overflow:hidden; margin:3px 0; }
+  .hpfill { height:100%; border-radius:999px; transition:width .5s ease; }
+  .hpfill.boss { background:linear-gradient(90deg,#ff5a6e,#ff9a3d); }
+  .hpfill.me { background:linear-gradient(90deg,#5aff9a,#5ab8ff); }
+  .bb-me { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; margin-top:6px; }
+  .bb-me .hpbar { flex:1; margin:0; }
+  .bb-hp { font-size:10px; color:#cbbcf5; }
+  .bb-power { font-weight:900; color:#ffe14a; }
+
+  .z-card.sel { outline:3px solid #ffe14a; transform:scale(1.04); }
+  .z-power { font-size:10px; font-weight:900; color:#ffe14a; }
+  .btn-main:disabled { opacity:.45; }
+
   footer { text-align:center; font-size:10px; color:#6f5aa0; margin-top:22px; padding-bottom:10px; }
   footer button { background:none; border:none; color:#6f5aa0; font-size:10px; text-decoration:underline; font-family:inherit; }
 </style>
@@ -392,6 +435,7 @@
       </button>
     </div>
 
+    <button class="btn-boss" onclick="openBossSel()">⚔️ ボスバトル <span id="bossCount"></span></button>
     <button class="btn-zukan" onclick="openZukan()">📖 キャラ図鑑 <span id="zukanCount"></span></button>
 
     <div class="stats-row">
@@ -429,8 +473,33 @@
     </div>
   </div>
 
+  <!-- ボス選択 -->
+  <div id="bossSel" class="screen">
+    <div class="zukan-head">
+      <span class="zukan-title">⚔️ ボスバトル</span>
+      <button class="quit-btn" onclick="goHome()">もどる</button>
+    </div>
+    <div class="zukan-progress" id="bossProgress"></div>
+    <div class="subject-grid" id="bossList"></div>
+    <div style="font-size:11px; color:#8a76c0; text-align:center; margin-top:14px; line-height:1.8;">
+      正解するとデッキのパワーぶんダメージ！<br>まちがえるとボスの反撃を受ける。HPが0になる前にたおせッ！
+    </div>
+  </div>
+
+  <!-- デッキ編成 -->
+  <div id="deckSel" class="screen">
+    <div class="zukan-head">
+      <span class="zukan-title">🃏 デッキをえらべッ！</span>
+      <button class="quit-btn" onclick="openBossSel()">もどる</button>
+    </div>
+    <div class="zukan-progress" id="deckInfo" style="line-height:1.7;"></div>
+    <div class="zukan-grid" id="deckGrid"></div>
+    <button class="btn-main" id="deckStart" onclick="startBattle()">⚔️ 出撃するッ！</button>
+  </div>
+
   <!-- クイズ -->
   <div id="quiz" class="screen">
+    <div id="battleBar" style="display:none;"></div>
     <div class="quiz-head">
       <span class="q-progress" id="qProgress">第1問 / 8</span>
       <span class="combo" id="comboText"></span>
@@ -519,7 +588,7 @@ const MIX_BONUS = 10;
 
 /* ===== セーブデータ ===== */
 const SAVE_KEY = "standDrillSave_v1";
-let save = { exp:0, level:1, total:0, correct:0, streak:0, lastPlay:"", cards:{}, sound:true, missed:[], grade:"" };
+let save = { exp:0, level:1, total:0, correct:0, streak:0, lastPlay:"", cards:{}, sound:true, missed:[], grade:"", bossCleared:0, deck:[] };
 
 function loadSave(){
   try {
@@ -1569,7 +1638,9 @@ function startQuiz(subject){
     maxCombo: 0,
     bonusExp: 0,
     answering: false,
+    battle: false,
   };
+  document.getElementById("battleBar").style.display = "none";
   showScreen("quiz");
   renderQuestion();
 }
@@ -1623,8 +1694,15 @@ function answer(btn, isCorrect, correctAnswer){
     showFx(pick(NG_QUOTES), false);
   }
 
+  if (s.battle) {
+    if (isCorrect) battleState.bossHp = Math.max(0, battleState.bossHp - battleState.power);
+    else battleState.playerHp = Math.max(0, battleState.playerHp - battleState.boss.atk);
+    renderBattleBar();
+  }
+
   setTimeout(() => {
     s.index++;
+    if (s.battle && (battleState.bossHp <= 0 || battleState.playerHp <= 0)) { finishQuiz(); return; }
     if (s.index < QUESTIONS_PER_SET) renderQuestion();
     else finishQuiz();
   }, 1100);
@@ -1646,6 +1724,17 @@ function finishQuiz(){
   if (s.correct === QUESTIONS_PER_SET) exp += PERFECT_BONUS;
   if (s.subject === "mix") exp += MIX_BONUS;
 
+  const battle = !!s.battle;
+  const win = battle && battleState.bossHp <= 0;
+  if (battle) {
+    s.gachaTier = win ? Math.min(8, Math.max(5, s.correct)) : 0;
+    if (win) {
+      exp += 50 + battleState.bossIdx * 20;
+      if (battleState.bossIdx === save.bossCleared) save.bossCleared++;
+      sfxReveal("SS");
+    }
+  }
+
   const beforeStage = stageFor(save.level);
 
   save.total += QUESTIONS_PER_SET;
@@ -1660,9 +1749,12 @@ function finishQuiz(){
   }
   writeSave();
 
-  document.getElementById("resScore").textContent = `${s.correct} / ${QUESTIONS_PER_SET}`;
-  document.getElementById("resTitle").textContent =
-    s.correct === QUESTIONS_PER_SET ? "パーフェクトッ！！" : "結果発表ッ！";
+  document.getElementById("resScore").textContent = battle
+    ? (win ? "WIN" : "LOSE")
+    : `${s.correct} / ${QUESTIONS_PER_SET}`;
+  document.getElementById("resTitle").textContent = battle
+    ? (win ? "ボス撃破ッ！！" : "敗北……")
+    : (s.correct === QUESTIONS_PER_SET ? "パーフェクトッ！！" : "結果発表ッ！");
   let expLine = `経験値 +${exp} EXP`;
   if (leveled) expLine += `　⤴ Lv.${save.level} にアップ！`;
   document.getElementById("resExp").textContent = expLine;
@@ -1671,6 +1763,11 @@ function finishQuiz(){
       document.getElementById("resQuote").textContent = quote;
       break;
     }
+  }
+  if (battle) {
+    document.getElementById("resQuote").textContent = win
+      ? `第${battleState.boss.part}部ボス「${battleState.boss.name}」をたおした！（${s.correct}問正解）`
+      : "カードを強くするか、ミスを減らしてリベンジだッ！";
   }
   renderGachaArea();
   showScreen("result");
@@ -1689,7 +1786,10 @@ function showEvo(stage){
 }
 function hideEvo(){ document.getElementById("evo").classList.remove("show"); }
 
-function retry(){ startQuiz(quizState.subject); }
+function retry(){
+  if (quizState && quizState.battle && battleState) { openDeckSel(battleState.bossIdx); return; }
+  startQuiz(quizState.subject);
+}
 
 /* ===== カードガチャ ===== */
 /* キャラデータ：[名前, 部, 出現重み(高3/中2/低1), レア度]（ジョジョ_キャラクター一覧.xlsx より） */
@@ -1990,15 +2090,23 @@ function rollChar(rarity){
   return pool[pool.length - 1][0];
 }
 
+function gachaTierOf(s){
+  const t = s.gachaTier !== undefined ? s.gachaTier : s.correct;
+  return Math.min(8, t);
+}
+
 function renderGachaArea(){
   const s = quizState;
   const area = document.getElementById("gachaArea");
-  if (s.correct < GACHA_MIN_CORRECT) {
-    area.innerHTML = '<div class="gacha-locked">🔒 5問以上正解でカードガチャが引けるぞ…！</div>';
+  const tier = gachaTierOf(s);
+  if (tier < GACHA_MIN_CORRECT) {
+    area.innerHTML = s.battle
+      ? '<div class="gacha-locked">🔒 ボスに勝利するとカードガチャが引けるぞ…！</div>'
+      : '<div class="gacha-locked">🔒 5問以上正解でカードガチャが引けるぞ…！</div>';
     return;
   }
   if (s.gachaDone) { area.innerHTML = ""; return; }
-  const r = GACHA_RATES[s.correct];
+  const r = GACHA_RATES[tier];
   area.innerHTML =
     '<button class="gacha-cta" onclick="doGacha()">🃏 カードガチャを引くッ！</button>' +
     `<div class="gacha-rates">排出率：SS ${r.SS}%　S ${r.S}%　A ${r.A}%　B ${r.B}%</div>`;
@@ -2006,9 +2114,10 @@ function renderGachaArea(){
 
 function doGacha(){
   const s = quizState;
-  if (s.gachaDone || s.correct < GACHA_MIN_CORRECT) return;
+  const tier = gachaTierOf(s);
+  if (s.gachaDone || tier < GACHA_MIN_CORRECT) return;
   s.gachaDone = true;
-  s.pendingCard = rollChar(rollRarity(s.correct));
+  s.pendingCard = rollChar(rollRarity(tier));
   renderGachaArea();
   const rarity = CHARS[s.pendingCard][3];
   document.getElementById("gachaInner").innerHTML =
@@ -2093,6 +2202,124 @@ function closeGacha(){
   const g = document.getElementById("gacha");
   g.classList.remove("show", "ss-bg");
   g.querySelectorAll(".ss-rays, .ss-spark").forEach(el => el.remove());
+}
+
+/* ===== ボスバトル ===== */
+const BOSSES = [
+  { name:"ディオ・ブランドー", part:1, hp:120, atk:25 },
+  { name:"カーズ",             part:2, hp:160, atk:30 },
+  { name:"DIO",                part:3, hp:200, atk:35 },
+  { name:"吉良吉影",           part:4, hp:240, atk:40 },
+  { name:"ディアボロ",         part:5, hp:280, atk:45 },
+  { name:"エンリコ・プッチ",   part:6, hp:320, atk:50 },
+];
+const CARD_POWER = { SS:50, S:30, A:20, B:10 };
+const PLAYER_HP = 100;
+let battleState = null;
+let deckSelState = null;
+
+function charIdx(part, name){ return CHARS.findIndex(c => c[0] === name && c[1] === part); }
+function ownedList(){
+  const out = [];
+  CHARS.forEach((c, i) => { if (save.cards[c[1] + "_" + c[0]]) out.push(i); });
+  return out;
+}
+
+function openBossSel(){
+  if (ownedList().length === 0) {
+    alert("カードが1枚もないぞ！まずクイズで5問以上正解して、ガチャでカードを手に入れよう！");
+    return;
+  }
+  renderBossSel();
+  showScreen("bossSel");
+}
+
+function renderBossSel(){
+  let html = "";
+  BOSSES.forEach((b, i) => {
+    const idx = charIdx(b.part, b.name);
+    const beaten = i < save.bossCleared;
+    const unlocked = i <= save.bossCleared;
+    const img = idx >= 0 ? imgTag(idx, "boss-img" + (beaten ? "" : " boss-sil")) : "";
+    const label = unlocked ? b.name : "？？？";
+    const state = beaten ? "⭐ クリアずみ（再挑戦できる）" : unlocked ? "⚔️ 挑戦できるッ！" : "🔒 前のボスをたおせ";
+    html += `<button class="boss-card" ${unlocked ? `onclick="openDeckSel(${i})"` : "disabled"}>` +
+      img +
+      `<span class="boss-info"><b>第${b.part}部ボス：${label}</b>` +
+      `<span class="boss-meta">HP ${b.hp}／反撃 ${b.atk}</span>` +
+      `<span class="boss-state">${state}</span></span></button>`;
+  });
+  document.getElementById("bossList").innerHTML = html;
+  document.getElementById("bossProgress").textContent = `クリア状況：${save.bossCleared} / ${BOSSES.length}`;
+}
+
+function openDeckSel(bi){
+  deckSelState = { bossIdx: bi, sel: [] };
+  if (Array.isArray(save.deck)) {
+    for (const k of save.deck) {
+      if (!save.cards[k]) continue;
+      const i = CHARS.findIndex(c => c[1] + "_" + c[0] === k);
+      if (i >= 0 && deckSelState.sel.length < 3 && !deckSelState.sel.includes(i)) deckSelState.sel.push(i);
+    }
+  }
+  renderDeckSel();
+  showScreen("deckSel");
+}
+
+function toggleDeck(i){
+  const s = deckSelState.sel;
+  const pos = s.indexOf(i);
+  if (pos >= 0) s.splice(pos, 1);
+  else if (s.length < 3) s.push(i);
+  renderDeckSel();
+}
+
+function renderDeckSel(){
+  const boss = BOSSES[deckSelState.bossIdx];
+  const power = deckSelState.sel.reduce((t, i) => t + CARD_POWER[CHARS[i][3]], 0);
+  document.getElementById("deckInfo").innerHTML =
+    `相手：第${boss.part}部ボス（HP ${boss.hp}・反撃 ${boss.atk}）<br>` +
+    `デッキ ${deckSelState.sel.length} / 3枚　⚔️合計パワー <b style="color:#ffe14a;">${power}</b>（正解1回のダメージ）`;
+  let html = "";
+  ownedList().sort((a, b) => CARD_POWER[CHARS[b][3]] - CARD_POWER[CHARS[a][3]]).forEach(i => {
+    const c = CHARS[i];
+    const selCls = deckSelState.sel.includes(i) ? " sel" : "";
+    html += `<div class="z-card card-r-${c[3]}${selCls}" onclick="toggleDeck(${i})"><span class="rar-badge rar-${c[3]}">${c[3]}</span>${imgTag(i, "z-img")}<div class="z-name">${c[0]}</div><div class="z-power">⚔️${CARD_POWER[c[3]]}</div></div>`;
+  });
+  document.getElementById("deckGrid").innerHTML = html;
+  document.getElementById("deckStart").disabled = deckSelState.sel.length === 0;
+}
+
+function startBattle(){
+  if (!deckSelState || deckSelState.sel.length === 0) return;
+  const boss = BOSSES[deckSelState.bossIdx];
+  const power = deckSelState.sel.reduce((t, i) => t + CARD_POWER[CHARS[i][3]], 0);
+  battleState = { bossIdx: deckSelState.bossIdx, boss, bossHp: boss.hp, playerHp: PLAYER_HP, power };
+  save.deck = deckSelState.sel.map(i => CHARS[i][1] + "_" + CHARS[i][0]);
+  writeSave();
+  quizState = {
+    subject: "mix",
+    questions: buildSet("mix"),
+    index: 0, correct: 0, combo: 0, maxCombo: 0, bonusExp: 0,
+    answering: false, battle: true,
+  };
+  document.getElementById("battleBar").style.display = "block";
+  renderBattleBar();
+  showScreen("quiz");
+  renderQuestion();
+}
+
+function renderBattleBar(){
+  const b = battleState;
+  const bi = charIdx(b.boss.part, b.boss.name);
+  const beaten = b.bossIdx < save.bossCleared;
+  document.getElementById("battleBar").innerHTML =
+    `<div class="bb-boss">${bi >= 0 ? imgTag(bi, "bb-img" + (beaten ? "" : " boss-sil")) : ""}` +
+    `<div class="bb-info">${b.boss.name}` +
+    `<div class="hpbar"><div class="hpfill boss" style="width:${b.bossHp / b.boss.hp * 100}%"></div></div>` +
+    `<span class="bb-hp">HP ${b.bossHp} / ${b.boss.hp}</span></div></div>` +
+    `<div class="bb-me"><span>じぶん</span><div class="hpbar"><div class="hpfill me" style="width:${b.playerHp}%"></div></div>` +
+    `<span class="bb-hp">${b.playerHp} / ${PLAYER_HP}</span><span class="bb-power">⚔️${b.power}</span></div>`;
 }
 
 /* ===== 図鑑 ===== */
@@ -2184,6 +2411,7 @@ function renderHome(){
   document.getElementById("expText").textContent = `つぎのレベルまで あと ${need - save.exp} EXP`;
   updateSoundBtn();
   updateGradeUI();
+  document.getElementById("bossCount").textContent = `（クリア ${save.bossCleared} / ${BOSSES.length}）`;
   document.getElementById("zukanCount").textContent = `（${Object.keys(save.cards).length} / ${CHARS.length}）`;
   document.getElementById("stTotal").textContent = save.total;
   document.getElementById("stCorrect").textContent = save.correct;
