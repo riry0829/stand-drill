@@ -482,7 +482,7 @@
     <div class="zukan-progress" id="bossProgress"></div>
     <div class="subject-grid" id="bossList"></div>
     <div style="font-size:11px; color:#8a76c0; text-align:center; margin-top:14px; line-height:1.8;">
-      正解するとデッキのパワーぶんダメージ！まちがえるとボスの反撃を受ける。<br>バトルは<b>どちらかのHPが0になるまで無制限</b>に続くぞ。<br>ボスをたおすと<b style="color:#ffd54a;">SS 25％の豪華ガチャ</b>が引けるッ！
+      正解するとデッキのパワーぶんダメージ！まちがえるとボスの反撃を受ける。<br>バトルは<b>どちらかのHPが0になるまで無制限</b>に続くぞ。<br>ボスは<b>1部→2部→…→6部→1部</b>の順にしか挑戦できない。<br>撃破で<b style="color:#ffd54a;">SS 25％の豪華ガチャ</b>、第6部撃破なら<b style="color:#ff8ad4;">SS50％／S50％の超豪華ガチャ</b>ッ！
     </div>
   </div>
 
@@ -518,7 +518,7 @@
       <div class="result-quote" id="resQuote"></div>
     </div>
     <div id="gachaArea"></div>
-    <button class="btn-main" onclick="retry()">もう一回挑戦するッ！</button>
+    <button class="btn-main" id="retryBtn" onclick="retry()">もう一回挑戦するッ！</button>
     <button class="btn-sub" onclick="goHome()">ホームにもどる</button>
   </div>
 
@@ -1736,9 +1736,10 @@ function finishQuiz(){
   const win = battle && battleState.bossHp <= 0;
   if (battle) {
     s.battleWin = win;
+    s.finalBoss = battleState.bossIdx === BOSSES.length - 1;   // 第6部ボス
     if (win) {
       exp += 50 + battleState.bossIdx * 20;
-      if (battleState.bossIdx === save.bossCleared) save.bossCleared++;
+      if (battleState.bossIdx === currentBoss()) save.bossCleared++;
       sfxReveal("SS");
     }
   }
@@ -1772,10 +1773,20 @@ function finishQuiz(){
       break;
     }
   }
+  const retryBtn = document.getElementById("retryBtn");
   if (battle) {
-    document.getElementById("resQuote").textContent = win
-      ? `第${battleState.boss.part}部ボス「${battleState.boss.name}」をたおした！（${s.correct}問正解）`
-      : "カードを強くするか、ミスを減らしてリベンジだッ！";
+    if (win) {
+      const nextPart = BOSSES[currentBoss()].part;
+      document.getElementById("resQuote").textContent = s.finalBoss
+        ? `第6部ボス「${battleState.boss.name}」をたおしたッ！全ボス制覇だッ！！`
+        : `第${battleState.boss.part}部ボス「${battleState.boss.name}」をたおした！（${s.correct}問正解）`;
+      retryBtn.textContent = `⚔️ 次は第${nextPart}部ボスへ！`;
+    } else {
+      document.getElementById("resQuote").textContent = "カードを強くするか、ミスを減らしてリベンジだッ！";
+      retryBtn.textContent = "⚔️ 同じボスにリベンジ！";
+    }
+  } else {
+    retryBtn.textContent = "もう一回挑戦するッ！";
   }
   renderGachaArea();
   showScreen("result");
@@ -1795,7 +1806,10 @@ function showEvo(stage){
 function hideEvo(){ document.getElementById("evo").classList.remove("show"); }
 
 function retry(){
-  if (quizState && quizState.battle && battleState) { openDeckSel(battleState.bossIdx); return; }
+  if (quizState && quizState.battle && battleState) {
+    if (quizState.battleWin) { openBossSel(); return; }   // 勝ったら次のボスへ（同じボスは再挑戦できない）
+    openDeckSel(battleState.bossIdx); return;              // 負けたら同じボスにリベンジ
+  }
   startQuiz(quizState.subject);
 }
 
@@ -2071,8 +2085,9 @@ async function importImagePack(input){
   input.value = "";
 }
 
-/* ボス撃破ガチャは全レア度25％ずつ */
+/* ボス撃破ガチャは全レア度25％ずつ。第6部ボス撃破は SS50%／S50% */
 const GACHA_RATES_BOSS = { SS:25, S:25, A:25, B:25 };
+const GACHA_RATES_BOSS_FINAL = { SS:50, S:50, A:0, B:0 };
 
 function rollRarityFrom(r){
   let x = Math.random() * 100;
@@ -2102,7 +2117,7 @@ function rollChar(rarity){
 }
 
 function gachaRatesOf(s){
-  if (s.battle) return s.battleWin ? GACHA_RATES_BOSS : null;
+  if (s.battle) return s.battleWin ? (s.finalBoss ? GACHA_RATES_BOSS_FINAL : GACHA_RATES_BOSS) : null;
   return s.correct >= GACHA_MIN_CORRECT ? GACHA_RATES[Math.min(8, s.correct)] : null;
 }
 
@@ -2244,26 +2259,35 @@ function openBossSel(){
   showScreen("bossSel");
 }
 
+function currentBoss(){ return save.bossCleared % BOSSES.length; }
+
 function renderBossSel(){
+  const current = currentBoss();
+  const lap = Math.floor(save.bossCleared / BOSSES.length) + 1;
   let html = "";
   BOSSES.forEach((b, i) => {
     const idx = charIdx(b.part, b.name);
-    const beaten = i < save.bossCleared;
-    const unlocked = i <= save.bossCleared;
-    const img = idx >= 0 ? imgTag(idx, "boss-img" + (beaten ? "" : " boss-sil")) : "";
-    const label = unlocked ? b.name : "？？？";
-    const state = beaten ? "⭐ クリアずみ（再挑戦できる）" : unlocked ? "⚔️ 挑戦できるッ！" : "🔒 前のボスをたおせ";
-    html += `<button class="boss-card" ${unlocked ? `onclick="openDeckSel(${i})"` : "disabled"}>` +
+    const everBeaten = save.bossCleared > i;   // 一度でも倒せば顔が見える
+    const isCurrent = i === current;
+    const beatenThisLap = i < current;
+    const img = idx >= 0 ? imgTag(idx, "boss-img" + (everBeaten ? "" : " boss-sil")) : "";
+    const label = (everBeaten || isCurrent) ? b.name : "？？？";
+    const state = isCurrent ? "⚔️ いま挑戦できるッ！"
+      : beatenThisLap ? "⭐ このシーズン撃破ずみ"
+      : "🔒 順番が来るまで待てッ！";
+    html += `<button class="boss-card" ${isCurrent ? `onclick="openDeckSel(${i})"` : "disabled"}>` +
       img +
       `<span class="boss-info"><b>第${b.part}部ボス：${label}</b>` +
       `<span class="boss-meta">HP ${b.hp}／反撃 ${b.atk}</span>` +
       `<span class="boss-state">${state}</span></span></button>`;
   });
   document.getElementById("bossList").innerHTML = html;
-  document.getElementById("bossProgress").textContent = `クリア状況：${save.bossCleared} / ${BOSSES.length}`;
+  document.getElementById("bossProgress").textContent =
+    `${lap}周目　いどめるのは 第${BOSSES[current].part}部ボスだけッ！（1部→2部→…→6部→1部の順）`;
 }
 
 function openDeckSel(bi){
+  if (bi !== currentBoss()) { openBossSel(); return; }  // 挑めるのは順番のボスだけ
   deckSelState = { bossIdx: bi, sel: [] };
   if (Array.isArray(save.deck)) {
     for (const k of save.deck) {
@@ -2421,7 +2445,8 @@ function renderHome(){
   document.getElementById("expText").textContent = `つぎのレベルまで あと ${need - save.exp} EXP`;
   updateSoundBtn();
   updateGradeUI();
-  document.getElementById("bossCount").textContent = `（クリア ${save.bossCleared} / ${BOSSES.length}）`;
+  document.getElementById("bossCount").textContent =
+    `（${Math.floor(save.bossCleared / BOSSES.length) + 1}周目・次は第${BOSSES[currentBoss()].part}部）`;
   document.getElementById("zukanCount").textContent = `（${Object.keys(save.cards).length} / ${CHARS.length}）`;
   document.getElementById("stTotal").textContent = save.total;
   document.getElementById("stCorrect").textContent = save.correct;
